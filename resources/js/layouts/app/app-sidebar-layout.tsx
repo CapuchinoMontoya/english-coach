@@ -1,17 +1,62 @@
-import { AppContent } from '@/components/app-content';
-import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { type BreadcrumbItem } from '@/types';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
-export default function AppSidebarLayout({ children, breadcrumbs = [] }: { children: React.ReactNode; breadcrumbs?: BreadcrumbItem[] }) {
+// ── Sidebar state context ─────────────────────────────────────────────────────
+interface SidebarCtxType {
+    open: boolean;
+    toggle: () => void;
+}
+
+export const SidebarCtx = createContext<SidebarCtxType>({ open: true, toggle: () => {} });
+export const useSidebarCtx = () => useContext(SidebarCtx);
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+export default function AppSidebarLayout({
+    children,
+    breadcrumbs = [],
+}: {
+    children: ReactNode;
+    breadcrumbs?: BreadcrumbItem[];
+}) {
+    const [open, setOpen] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        return localStorage.getItem('sidebar') !== 'false';
+    });
+
+    const toggle = () => {
+        setOpen((o) => {
+            const next = !o;
+            localStorage.setItem('sidebar', String(next));
+            return next;
+        });
+    };
+
     return (
-        <AppShell variant="sidebar">
-            <AppSidebar />
-            <AppContent variant="sidebar">
-                <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                {children}
-            </AppContent>
-        </AppShell>
+        <SidebarCtx.Provider value={{ open, toggle }}>
+            <div
+                style={{
+                    display: 'flex',
+                    height: '100dvh',
+                    overflow: 'hidden',
+                    background: 'var(--bg)',
+                }}
+            >
+                <AppSidebar />
+                <div
+                    style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        minWidth: 0,
+                    }}
+                >
+                    <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                    <main style={{ flex: 1, overflowY: 'auto' }}>{children}</main>
+                </div>
+            </div>
+        </SidebarCtx.Provider>
     );
 }

@@ -1,29 +1,37 @@
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
+import { type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-const badgeVariants = cva(
-    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2',
-    {
-        variants: {
-            variant: {
-                default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-                secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-                outline: 'text-foreground',
-            },
-        },
-        defaultVariants: {
-            variant: 'default',
-        },
-    },
-);
+export type BadgeVariant =
+    | 'default'
+    | 'solid-primary'
+    | 'solid-accent'
+    | 'soft-success'
+    | 'soft-warning'
+    | 'soft-danger'
+    | 'soft-info';
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-    return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+    variant?: BadgeVariant;
+    /** Show a small leading dot in the current color */
+    dot?: boolean;
+    children?: ReactNode;
 }
 
-export { Badge, badgeVariants };
+const variantClass: Record<BadgeVariant, string> = {
+    default: '',
+    'solid-primary': 'solid-primary',
+    'solid-accent': 'solid-accent',
+    'soft-success': 'soft-success',
+    'soft-warning': 'soft-warning',
+    'soft-danger': 'soft-danger',
+    'soft-info': 'soft-info',
+};
+
+export function Badge({ variant = 'default', dot, className, children, ...rest }: BadgeProps) {
+    return (
+        <span className={cn('badge', variantClass[variant], className)} {...rest}>
+            {dot && <span className="dot" />}
+            {children}
+        </span>
+    );
+}

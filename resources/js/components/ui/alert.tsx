@@ -1,36 +1,33 @@
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
+import { type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { IconInfo, IconCheckCircle, IconAlertTriangle, IconAlertCircle } from '@/components/icons';
 
-const alertVariants = cva(
-    'relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground',
-    {
-        variants: {
-            variant: {
-                default: 'bg-background text-foreground',
-                destructive: 'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive',
-            },
-        },
-        defaultVariants: {
-            variant: 'default',
-        },
-    },
-);
+export type AlertTone = 'info' | 'success' | 'warning' | 'danger';
 
-const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>>(
-    ({ className, variant, ...props }, ref) => <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props} />,
-);
-Alert.displayName = 'Alert';
+export interface AlertProps {
+    tone?: AlertTone;
+    title?: ReactNode;
+    children?: ReactNode;
+    /** Override the default icon for the tone */
+    icon?: ReactNode;
+    className?: string;
+}
 
-const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(({ className, ...props }, ref) => (
-    <h5 ref={ref} className={cn('mb-1 font-medium leading-none tracking-tight', className)} {...props} />
-));
-AlertTitle.displayName = 'AlertTitle';
+const toneIcons: Record<AlertTone, ReactNode> = {
+    info: <IconInfo size={20} />,
+    success: <IconCheckCircle size={20} />,
+    warning: <IconAlertTriangle size={20} />,
+    danger: <IconAlertCircle size={20} />,
+};
 
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-sm [&_p]:leading-relaxed', className)} {...props} />
-));
-AlertDescription.displayName = 'AlertDescription';
-
-export { Alert, AlertDescription, AlertTitle };
+export function Alert({ tone = 'info', title, icon, className, children }: AlertProps) {
+    return (
+        <div role="alert" className={cn('alert', tone, className)}>
+            <span className="icon">{icon ?? toneIcons[tone]}</span>
+            <div className="body">
+                {title !== undefined && <div className="title">{title}</div>}
+                {children !== undefined && <div className="text">{children}</div>}
+            </div>
+        </div>
+    );
+}

@@ -1,30 +1,68 @@
-import * as AvatarPrimitive from '@radix-ui/react-avatar';
-import * as React from 'react';
-
+import { type HTMLAttributes, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-const Avatar = React.forwardRef<React.ElementRef<typeof AvatarPrimitive.Root>, React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>>(
-    ({ className, ...props }, ref) => (
-        <AvatarPrimitive.Root ref={ref} className={cn('relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full', className)} {...props} />
-    ),
-);
-Avatar.displayName = AvatarPrimitive.Root.displayName;
+export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
+export type AvatarTone = 'a' | 'b' | 'c' | 'd';
 
-const AvatarImage = React.forwardRef<React.ElementRef<typeof AvatarPrimitive.Image>, React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>>(
-    ({ className, ...props }, ref) => <AvatarPrimitive.Image ref={ref} className={cn('aspect-square h-full w-full', className)} {...props} />,
-);
-AvatarImage.displayName = AvatarPrimitive.Image.displayName;
+export interface AvatarProps extends HTMLAttributes<HTMLSpanElement> {
+    size?: AvatarSize;
+    tone?: AvatarTone;
+    src?: string;
+    alt?: string;
+    children?: ReactNode;
+}
 
-const AvatarFallback = React.forwardRef<
-    React.ElementRef<typeof AvatarPrimitive.Fallback>,
-    React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-    <AvatarPrimitive.Fallback
-        ref={ref}
-        className={cn('flex h-full w-full items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground', className)}
-        {...props}
-    />
-));
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
+const sizeClass: Record<AvatarSize, string> = {
+    sm: 'sm',
+    md: 'md',
+    lg: 'lg',
+    xl: 'xl',
+};
 
-export { Avatar, AvatarFallback, AvatarImage };
+export function Avatar({
+    size = 'md',
+    tone,
+    src,
+    alt = '',
+    className,
+    children,
+    ...rest
+}: AvatarProps) {
+    return (
+        <span
+            className={cn('avatar', sizeClass[size], tone && `tone-${tone}`, className)}
+            {...rest}
+        >
+            {src ? <img src={src} alt={alt} /> : children}
+        </span>
+    );
+}
+
+export interface AvatarStackProps extends HTMLAttributes<HTMLSpanElement> {
+    children?: ReactNode;
+}
+
+export function AvatarStack({ className, children, ...rest }: AvatarStackProps) {
+    return (
+        <span className={cn('avatar-stack', className)} {...rest}>
+            {children}
+        </span>
+    );
+}
+
+// Shadcn-compat sub-components used by user-info.tsx and app-header.tsx
+export function AvatarImage({ src, alt = '', className, ...rest }: ImgHTMLAttributes<HTMLImageElement>) {
+    if (!src) return null;
+    return <img src={src} alt={alt} className={cn('h-full w-full object-cover', className)} {...rest} />;
+}
+
+export function AvatarFallback({ className, children, ...rest }: HTMLAttributes<HTMLSpanElement>) {
+    return (
+        <span
+            className={cn('flex h-full w-full items-center justify-center text-xs font-medium', className)}
+            {...rest}
+        >
+            {children}
+        </span>
+    );
+}

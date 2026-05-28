@@ -5,26 +5,35 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { route as routeFn } from 'ziggy-js';
 import { initializeTheme } from './hooks/use-appearance';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { initializePalette } from './hooks/use-palette';
 
 declare global {
     const route: typeof routeFn;
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Capuchino';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.tsx`,
+            import.meta.glob('./pages/**/*.tsx'),
+        ),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#4B5563',
+        // Capuchino terracotta — matches --accent
+        color: '#C97A4A',
+        showSpinner: false,
     },
 });
 
-// This will set light / dark mode on load...
+// Set light / dark mode on initial load (before paint, no flash).
 initializeTheme();
+
+// Set palette (cafe / linen / spice) on initial load.
+initializePalette();

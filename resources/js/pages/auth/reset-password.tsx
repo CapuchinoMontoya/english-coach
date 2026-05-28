@@ -1,32 +1,27 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { ArrowRight, Eye, EyeOff, LoaderCircle } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/auth-layout';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { Input } from '@/components/ui/Input';
+import { AuthShell } from './_auth-shell';
 
 interface ResetPasswordProps {
     token: string;
     email: string;
 }
 
-interface ResetPasswordForm {
-    token: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-}
-
 export default function ResetPassword({ token, email }: ResetPasswordProps) {
-    const { data, setData, post, processing, errors, reset } = useForm<ResetPasswordForm>({
-        token: token,
-        email: email,
+    const { data, setData, post, processing, errors, reset } = useForm({
+        token,
+        email,
         password: '',
         password_confirmation: '',
     });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -36,63 +31,86 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
     };
 
     return (
-        <AuthLayout title="Reset password" description="Please enter your new password below">
+        <>
             <Head title="Reset password" />
+            <AuthShell
+                eyebrow="New password"
+                heading={<>Choose a new <em style={{ color: 'var(--accent)' }}>password</em>.</>}
+                sub="Make it strong — at least 8 characters with a mix of letters and numbers."
+                quote="A fresh start is just a password away."
+                word={{ word: 'renew', pron: '/rɪˈnjuː/', pos: 'verb', defn: 'To make something new again or to replace it with something new.', level: 'A2' }}
+            >
+                <form className="login" onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s-5)' }}>
+                    {/* Hidden email field */}
+                    <input type="hidden" name="token" value={data.token} />
+                    <input type="hidden" name="email" value={data.email} />
 
-            <form onSubmit={submit}>
-                <div className="grid gap-6">
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            name="email"
-                            autoComplete="email"
-                            value={data.email}
-                            className="mt-1 block w-full"
-                            readOnly
-                            onChange={(e) => setData('email', e.target.value)}
-                        />
-                        <InputError message={errors.email} className="mt-2" />
+                    <Field label="New password" htmlFor="password" error={errors.password}>
+                        <div className="password-wrap">
+                            <Input
+                                id="password"
+                                type={showPassword ? 'text' : 'password'}
+                                required
+                                autoFocus
+                                autoComplete="new-password"
+                                placeholder="Create a strong password"
+                                value={data.password}
+                                onChange={(e) => setData('password', e.target.value)}
+                                invalid={!!errors.password}
+                                style={{ paddingRight: 44 }}
+                            />
+                            <button
+                                type="button"
+                                className="reveal"
+                                onClick={() => setShowPassword((v) => !v)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                    </Field>
+
+                    <Field label="Confirm password" htmlFor="password_confirmation" error={errors.password_confirmation}>
+                        <div className="password-wrap">
+                            <Input
+                                id="password_confirmation"
+                                type={showConfirm ? 'text' : 'password'}
+                                required
+                                autoComplete="new-password"
+                                placeholder="Confirm your password"
+                                value={data.password_confirmation}
+                                onChange={(e) => setData('password_confirmation', e.target.value)}
+                                invalid={!!errors.password_confirmation}
+                                style={{ paddingRight: 44 }}
+                            />
+                            <button
+                                type="button"
+                                className="reveal"
+                                onClick={() => setShowConfirm((v) => !v)}
+                                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                            >
+                                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                    </Field>
+
+                    <div style={{ marginTop: 'var(--s-2)' }}>
+                        <Button
+                            type="submit"
+                            size="lg"
+                            disabled={processing}
+                            className="w-full"
+                            trailingIcon={
+                                processing
+                                    ? <LoaderCircle className="h-4 w-4 animate-spin" />
+                                    : <ArrowRight size={16} />
+                            }
+                        >
+                            Reset password
+                        </Button>
                     </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            name="password"
-                            autoComplete="new-password"
-                            value={data.password}
-                            className="mt-1 block w-full"
-                            autoFocus
-                            onChange={(e) => setData('password', e.target.value)}
-                            placeholder="Password"
-                        />
-                        <InputError message={errors.password} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation">Confirm password</Label>
-                        <Input
-                            id="password_confirmation"
-                            type="password"
-                            name="password_confirmation"
-                            autoComplete="new-password"
-                            value={data.password_confirmation}
-                            className="mt-1 block w-full"
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                            placeholder="Confirm password"
-                        />
-                        <InputError message={errors.password_confirmation} className="mt-2" />
-                    </div>
-
-                    <Button type="submit" className="mt-4 w-full" disabled={processing}>
-                        {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Reset password
-                    </Button>
-                </div>
-            </form>
-        </AuthLayout>
+                </form>
+            </AuthShell>
+        </>
     );
 }

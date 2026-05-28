@@ -1,21 +1,31 @@
-import * as React from 'react';
-
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(({ className, type, ...props }, ref) => {
-    return (
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+    /** Marks the input as invalid for styling (red border, error ring) */
+    invalid?: boolean;
+    /** Icon rendered on the leading edge inside the input */
+    leadingIcon?: ReactNode;
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+    { invalid, leadingIcon, className, ...rest },
+    ref,
+) {
+    const input = (
         <input
-            type={type}
-            className={cn(
-                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-                className,
-            )}
             ref={ref}
-            {...props}
+            className={cn('input', invalid && 'error', className)}
+            {...rest}
         />
     );
+
+    if (!leadingIcon) return input;
+
+    return (
+        <div className="input-group">
+            <span className="input-group-icon">{leadingIcon}</span>
+            {input}
+        </div>
+    );
 });
-
-Input.displayName = 'Input';
-
-export { Input };

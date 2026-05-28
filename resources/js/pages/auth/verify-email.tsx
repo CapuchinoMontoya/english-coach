@@ -1,41 +1,62 @@
-// Components
-import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { LoaderCircle, Mail } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
-import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
-import AuthLayout from '@/layouts/auth-layout';
+import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
+import { AuthShell } from './_auth-shell';
 
 export default function VerifyEmail({ status }: { status?: string }) {
     const { post, processing } = useForm({});
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         post(route('verification.send'));
     };
 
     return (
-        <AuthLayout title="Verify email" description="Please verify your email address by clicking on the link we just emailed to you.">
-            <Head title="Email verification" />
+        <>
+            <Head title="Verify email" />
+            <AuthShell
+                eyebrow="Almost there"
+                heading={<>Check your <em style={{ color: 'var(--accent)' }}>inbox</em>.</>}
+                sub="We sent a verification link to your email address. Click it to activate your account and start learning."
+                quote="Good things come to those who verify their email."
+                word={{ word: 'verify', pron: '/ˈver.ɪ.faɪ/', pos: 'verb', defn: 'To prove that something is true or correct, or to make certain it is right.', level: 'B2' }}
+            >
+                {status === 'verification-link-sent' && (
+                    <Alert tone="success" className="mb-5">
+                        A new verification link has been sent to your email address.
+                    </Alert>
+                )}
 
-            {status === 'verification-link-sent' && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address you provided during registration.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s-4)', alignItems: 'center', textAlign: 'center' }}>
+                    <p style={{ fontSize: 'var(--fs-14)', color: 'var(--ink-muted)', lineHeight: 1.6, maxWidth: '34ch' }}>
+                        Didn't get the email? Check your spam folder, or click below to resend it.
+                    </p>
+
+                    <form onSubmit={submit}>
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            size="lg"
+                            disabled={processing}
+                            leadingIcon={processing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Mail size={16} />}
+                        >
+                            Resend verification email
+                        </Button>
+                    </form>
+
+                    <Link
+                        href={route('logout')}
+                        method="post"
+                        as="button"
+                        style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)', marginTop: 'var(--s-3)' }}
+                    >
+                        Log out and use a different account
+                    </Link>
                 </div>
-            )}
-
-            <form onSubmit={submit} className="space-y-6 text-center">
-                <Button disabled={processing} variant="secondary">
-                    {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                    Resend verification email
-                </Button>
-
-                <TextLink href={route('logout')} method="post" className="mx-auto block text-sm">
-                    Log out
-                </TextLink>
-            </form>
-        </AuthLayout>
+            </AuthShell>
+        </>
     );
 }

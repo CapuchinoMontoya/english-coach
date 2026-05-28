@@ -1,43 +1,70 @@
 import { Slot } from '@radix-ui/react-slot';
-import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
-
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-const buttonVariants = cva(
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
-    {
-        variants: {
-            variant: {
-                default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-                destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-                outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-                secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                ghost: 'hover:bg-accent hover:text-accent-foreground',
-                link: 'text-primary underline-offset-4 hover:underline',
-            },
-            size: {
-                default: 'h-10 px-4 py-2',
-                sm: 'h-9 rounded-md px-3',
-                lg: 'h-11 rounded-md px-8',
-                icon: 'h-10 w-10',
-            },
-        },
-        defaultVariants: {
-            variant: 'default',
-            size: 'default',
-        },
-    },
-);
+export type ButtonVariant =
+    | 'primary'
+    | 'secondary'
+    | 'ghost'
+    | 'accent'
+    | 'danger'
+    | 'destructive'  // alias for danger (Shadcn compat)
+    | 'link';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    variant?: ButtonVariant;
+    size?: ButtonSize;
+    leadingIcon?: ReactNode;
+    trailingIcon?: ReactNode;
+    /** Render children as the direct child element (Radix Slot pattern) */
     asChild?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-});
-Button.displayName = 'Button';
+const variantClass: Record<ButtonVariant, string> = {
+    primary: 'btn-primary',
+    secondary: 'btn-secondary',
+    ghost: 'btn-ghost',
+    accent: 'btn-accent',
+    danger: 'btn-danger',
+    destructive: 'btn-danger',
+    link: 'btn-link',
+};
 
-export { Button, buttonVariants };
+const sizeClass: Record<ButtonSize, string> = {
+    sm: 'btn-sm',
+    md: '',
+    lg: 'btn-lg',
+    xl: 'btn-xl',
+    icon: 'btn-icon',
+};
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+    {
+        variant = 'primary',
+        size = 'md',
+        leadingIcon,
+        trailingIcon,
+        asChild = false,
+        className,
+        children,
+        type = 'button',
+        ...rest
+    },
+    ref,
+) {
+    const Comp = asChild ? Slot : 'button';
+    return (
+        <Comp
+            ref={ref}
+            type={type}
+            className={cn('btn', variantClass[variant], sizeClass[size], className)}
+            {...rest}
+        >
+            {leadingIcon}
+            {children}
+            {trailingIcon}
+        </Comp>
+    );
+});

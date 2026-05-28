@@ -7,7 +7,11 @@ const prefersDark = () => window.matchMedia('(prefers-color-scheme: dark)').matc
 const applyTheme = (appearance: Appearance) => {
     const isDark = appearance === 'dark' || (appearance === 'system' && prefersDark());
 
-    document.documentElement.classList.toggle('dark', isDark);
+    if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
 };
 
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -39,7 +43,7 @@ export function useAppearance() {
         const savedAppearance = localStorage.getItem('appearance') as Appearance | null;
         updateAppearance(savedAppearance || 'system');
 
-        return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+        // return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
     }, []);
 
     return { appearance, updateAppearance };
