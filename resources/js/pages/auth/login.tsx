@@ -1,18 +1,21 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, Eye, EyeOff, LoaderCircle, ArrowLeft } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
-
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 
-interface WordInfo {
-    word: string;
-    pronunciation: string;
+interface Meaning {
     type: string;
     definition: string;
+}
+
+interface WordOfTheDay {
+    word: string;
+    pronunciation: string;
+    meanings: Meaning[]; // <--- Ahora es un arreglo de objetos Meaning
     level: string;
 }
 
@@ -25,7 +28,7 @@ interface LoginForm {
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
-    wordOfTheDay: WordInfo;
+    wordOfTheDay: WordOfTheDay;
 }
 
 export default function Login({ status, canResetPassword, wordOfTheDay }: LoginProps) {
@@ -365,8 +368,19 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                         </span>
                         <div className="label">Word of the day · {dayOfWeek}</div>
                         <div className="word">{wordOfTheDay.word}</div>
-                        <div className="pron">{wordOfTheDay.pronunciation} &nbsp;·&nbsp; {wordOfTheDay.type}</div>
-                        <div className="defn">{wordOfTheDay.definition}</div>
+                        <div className="pron">{wordOfTheDay.pronunciation}</div>
+                        <div className="meanings-container mt-3">
+                            {wordOfTheDay.meanings.map((meaning, index) => (
+                                <div key={index} className="mb-3">
+                                    <div className="pron text-sm italic text-gray-500">
+                                        {meaning.type}
+                                    </div>
+                                    <div className="defn text-gray-800">
+                                        {meaning.definition}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="brand-foot">
@@ -510,10 +524,9 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     </div>
 
                     <div className="form-foot">
-                        <span>v1.0 · Updated 2 days ago</span>
+                        <span>v1.0</span>
                         <div className="row">
                             <a href="#">EN · English</a>
-                            <a href="#">Status</a>
                         </div>
                     </div>
                 </section>

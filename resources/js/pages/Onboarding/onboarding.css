@@ -1,0 +1,295 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* ─── Variables ─────────────────────────────────────────────────────────── */
+:root {
+    --cap-cream:       #FAF6F1;
+    --cap-cream-dark:  #F2EBE2;
+    --cap-brown:       #6B3F1F;
+    --cap-brown-mid:   #8B5533;
+    --cap-terracotta:  #C4622D;
+    --cap-terracotta-lt: rgba(196, 98, 45, 0.08);
+    --cap-border:      #E8DDD4;
+    --cap-border-sel:  #C4622D;
+    --cap-muted:       #A08070;
+    --cap-muted-lt:    #C0AFA3;
+    --cap-text:        #2D1B10;
+    --cap-text-dark:   #1C1107;
+    --cap-surface:     #FFFFFF;
+}
+
+/* ─── Root ──────────────────────────────────────────────────────────────── */
+.ob-root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cap-cream);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--cap-text-dark);
+}
+
+/* ─── Header ────────────────────────────────────────────────────────────── */
+.ob-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--cap-border);
+    flex-shrink: 0;
+}
+
+.ob-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 19px;
+    color: var(--cap-brown);
+    text-decoration: none;
+}
+
+.ob-logo-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--cap-terracotta);
+    border-radius: 50%;
+}
+
+.ob-header-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--cap-muted);
+}
+
+/* ─── Main ──────────────────────────────────────────────────────────────── */
+.ob-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 40px;
+}
+
+/* ─── Progress dots ─────────────────────────────────────────────────────── */
+.ob-progress {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 52px;
+}
+
+.ob-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cap-border);
+    transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.ob-dot.done {
+    background: var(--cap-terracotta);
+    opacity: 0.5;
+}
+
+.ob-dot.active {
+    background: var(--cap-terracotta);
+    transform: scale(1.25);
+}
+
+/* ─── Step wrapper (animado) ────────────────────────────────────────────── */
+.ob-step {
+    width: 100%;
+    max-width: 500px;
+    animation: ob-step-in 0.3s ease;
+}
+
+.ob-question {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 30px;
+    font-weight: 500;
+    color: var(--cap-brown);
+    text-align: center;
+    line-height: 1.2;
+    margin-bottom: 10px;
+}
+
+.ob-subtitle {
+    font-size: 13.5px;
+    color: var(--cap-muted);
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 36px;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ─── Cards grid ────────────────────────────────────────────────────────── */
+.ob-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.ob-card {
+    background: var(--cap-surface);
+    border: 1.5px solid var(--cap-border);
+    border-radius: 14px;
+    padding: 22px 18px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    transition: border-color 0.18s, background 0.18s, transform 0.15s, box-shadow 0.18s;
+    user-select: none;
+}
+
+.ob-card:hover {
+    border-color: var(--cap-muted);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 63, 31, 0.08);
+}
+
+.ob-card:active {
+    transform: translateY(0);
+}
+
+.ob-card.selected {
+    border-color: var(--cap-border-sel);
+    background: var(--cap-terracotta-lt);
+    box-shadow: 0 0 0 3px rgba(196, 98, 45, 0.1);
+}
+
+.ob-card-icon {
+    font-size: 26px;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.ob-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cap-text-dark);
+    line-height: 1.3;
+}
+
+.ob-card.selected .ob-card-title {
+    color: var(--cap-brown);
+}
+
+.ob-card-desc {
+    font-size: 12px;
+    color: var(--cap-muted);
+    line-height: 1.4;
+}
+
+/* ─── Continue button ───────────────────────────────────────────────────── */
+.ob-actions {
+    width: 100%;
+    max-width: 500px;
+    margin-top: 28px;
+}
+
+.ob-continue-btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--cap-brown);
+    color: #FDF8F4;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.2s;
+    letter-spacing: 0.01em;
+}
+
+.ob-continue-btn:hover:not(:disabled) {
+    background: var(--cap-brown-mid);
+}
+
+.ob-continue-btn:active:not(:disabled) {
+    transform: scale(0.99);
+}
+
+.ob-continue-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.ob-step-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--cap-muted-lt);
+    margin-top: 14px;
+    letter-spacing: 0.02em;
+}
+
+/* ─── Summary (último paso antes de submit) ─────────────────────────────── */
+.ob-summary {
+    width: 100%;
+    max-width: 500px;
+    background: var(--cap-surface);
+    border: 1px solid var(--cap-border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ob-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+.ob-summary-label {
+    color: var(--cap-muted);
+}
+
+.ob-summary-value {
+    font-weight: 500;
+    color: var(--cap-text-dark);
+}
+
+/* ─── Animations ────────────────────────────────────────────────────────── */
+@keyframes ob-step-in {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .ob-question {
+        font-size: 24px;
+    }
+
+    .ob-cards {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .ob-card {
+        padding: 16px 14px;
+    }
+
+    .ob-card-icon {
+        font-size: 22px;
+    }
+
+    .ob-main {
+        padding: 32px 16px 32px;
+    }
+}
