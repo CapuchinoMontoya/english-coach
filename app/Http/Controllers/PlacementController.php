@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateStudyPlanJob;
 use App\Services\AI\AIProviderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
