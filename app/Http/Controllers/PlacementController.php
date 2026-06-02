@@ -26,8 +26,11 @@ class PlacementController extends Controller
 
         $user    = $request->user();
         $profile = $user->learningProfile;
-        $systemPrompt = view('ai.prompts.placement', compact('user', 'profile'))->render();
-
+        $systemPrompt = view('ai.prompts.placement', [
+            'user'       => $user,
+            'profile'    => $profile,
+            'first_name' => explode(' ', trim($user->name))[0],
+        ])->render();
         $messages = $request->input('messages', []);
 
         // Contamos cuántos mensajes ha enviado el usuario
@@ -40,14 +43,13 @@ class PlacementController extends Controller
             $systemNote = "[SYSTEM NOTE: Turn 15/15. FINAL TURN. You MUST wrap up the conversation warmly now, welcome the user to the platform, and append [EVALUATION_READY] at the very end.]";
         }
 
-        // Inyectamos la nota en el último mensaje del usuario
         if ($userTurnCount > 0) {
             $lastIndex = count($messages) - 1;
             $messages[$lastIndex]['content'] .= "\n\n" . $systemNote;
         } elseif ($userTurnCount === 0) {
             $messages[] = [
                 'role'    => 'user',
-                'content' => $systemNote
+                'content' => '[START_CONVERSATION] ' . $systemNote,
             ];
         }
 
@@ -78,9 +80,12 @@ class PlacementController extends Controller
 
         // Limpia las notas de sistema inyectadas antes de mandar a evaluar
         $cleanMessages = array_map(function ($msg) {
-            $msg['content'] = preg_replace('/\n\n\[SYSTEM NOTE:.*?\]/s', '', $msg['content']);
+            $content = preg_replace('/\n\n\[SYSTEM NOTE:.*?\]/s', '', $msg['content']);
+            $content = str_replace('[START_CONVERSATION] ', '', $content);
+            $msg['content'] = trim($content);
             return $msg;
         }, $messages);
+
 
         // Prompt de evaluación — pide SOLO JSON, sin markdown
         $evalPrompt = <<<PROMPT
@@ -110,10 +115,14 @@ class PlacementController extends Controller
             PROMPT;
 
         // Llamada NO streaming — espera el JSON completo
-        $raw = $this->ai->complete('placement', $evalPrompt, $cleanMessages, 600);
-
-        // Limpia posibles backticks de markdown que el modelo incluya
+        $raw  = $this->ai->complete('placement', $evalPrompt, $cleanMessages, 800);
         $json = preg_replace('/```(?:json)?\s*|\s*```/', '', trim($raw));
+
+        if (! json_decode($json)) {
+            preg_match('/\{.*\}/s', $json, $matches);
+            $json = $matches[0] ?? $json;
+        }
+
         $evaluation = json_decode($json, true);
 
         // Fallback si el JSON falla
@@ -134,12 +143,16 @@ class PlacementController extends Controller
             ];
         }
 
-        // Actualiza learning_profile
-        $user->learningProfile->update([
+        $profile = $user->learningProfile;
+
+        $profile->update([
             'real_level'     => $evaluation['real_level'],
             'weak_areas'     => $evaluation['weak_areas']     ?? [],
             'strong_areas'   => $evaluation['strong_areas']   ?? [],
-            'learning_style' => $evaluation['learning_style'] ?? [],
+            'learning_style' => array_merge(
+                $profile->learning_style ?? [],
+                $evaluation['learning_style'] ?? []
+            ),
             'placement_done' => true,
         ]);
 
@@ -150,11 +163,11 @@ class PlacementController extends Controller
             [
                 'context' => [
                     'identity' => [
-                        'name'           => $user->name,
+                        'name' => explode(' ', trim($user->name))[0],
                         'declared_level' => $user->learningProfile->declared_level,
                         'real_level'     => $evaluation['real_level'],
                     ],
-                    'learning_style'  => $evaluation['learning_style'],
+                    'learning_style'  => $profile->learning_style,
                     'academic'        => [
                         'weak_areas'      => $evaluation['weak_areas']     ?? [],
                         'strong_areas'    => $evaluation['strong_areas']   ?? [],
@@ -172,6 +185,8 @@ class PlacementController extends Controller
                 'last_updated_at' => now(),
             ]
         );
+
+        GenerateStudyPlanJob::dispatch($user)->afterCommit();
 
         return redirect()->route('dashboard');
     }

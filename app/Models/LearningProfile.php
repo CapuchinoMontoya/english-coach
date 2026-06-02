@@ -13,6 +13,7 @@ class LearningProfile extends Model
         'weak_areas',
         'strong_areas',
         'learning_style',
+        'onboarding_done',
         'current_plan',
         'placement_done'
     ];
@@ -22,6 +23,7 @@ class LearningProfile extends Model
         'strong_areas'   => 'array',
         'learning_style' => 'array',
         'current_plan'   => 'array',
+        'onboarding_done' => 'boolean',
         'placement_done' => 'boolean',
     ];
 
