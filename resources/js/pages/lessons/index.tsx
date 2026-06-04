@@ -1,74 +1,172 @@
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { BookOpen, Clock } from 'lucide-react';
+import AppLayout from '@/layouts/app-layout'
+import { type BreadcrumbItem } from '@/types'
+import { Head, router } from '@inertiajs/react'
+import { CheckCircle, Clock, Lock, RotateCcw } from 'lucide-react'
+import '../lessons.css'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type TopicStatus = 'pending' | 'in_progress' | 'completed' | 'needs_review'
+
+interface Topic {
+    id:           number
+    order:        number
+    title:        string
+    description:  string
+    status:       TopicStatus
+    score:        number | null
+    locked:       boolean
+}
+
+interface LessonsIndexProps {
+    topics:     Topic[]
+    transition: string    // "A2_to_B1"
+    level:      string    // "A2"
+}
+
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Lessons', href: '/lessons' },
-];
+    { title: 'Lessons',   href: '/lessons'   },
+]
 
-const lessons = [
-    { id: 1, title: 'Everyday Greetings', level: 'a1', duration: '10 min', emoji: '👋', description: 'Learn how to say hello, goodbye, and introduce yourself.', done: true },
-    { id: 2, title: 'Present Simple Tense', level: 'a1', duration: '15 min', emoji: '📅', description: 'Use the present simple to talk about habits and facts.', done: true },
-    { id: 3, title: 'Talking About Family', level: 'a1', duration: '12 min', emoji: '👨‍👩‍👧', description: 'Vocabulary and phrases to describe your family.', done: true },
-    { id: 4, title: 'Food & Restaurants', level: 'a2', duration: '14 min', emoji: '🍽️', description: 'Order food and talk about what you like to eat.', done: false },
-    { id: 5, title: 'Past Simple vs Past Continuous', level: 'b1', duration: '20 min', emoji: '⏳', description: 'Tell stories and describe past events naturally.', done: false },
-    { id: 6, title: 'Expressing Opinions', level: 'b1', duration: '18 min', emoji: '💬', description: 'Share your views politely in conversations.', done: false },
-];
+// ─── Status helpers ───────────────────────────────────────────────────────────
 
-export default function LessonsIndex() {
+const STATUS_LABEL: Record<TopicStatus, string> = {
+    pending:      'Pending',
+    in_progress:  'In Progress',
+    completed:    'Completed',
+    needs_review: 'Needs Review',
+}
+
+const STATUS_CTA: Record<TopicStatus, string> = {
+    pending:      'Start',
+    in_progress:  'Continue',
+    completed:    'Review',
+    needs_review: 'Retry',
+}
+
+function StatusIcon({ status }: { status: TopicStatus }) {
+    if (status === 'completed')    return <CheckCircle size={14} style={{ color: '#2E7D32' }} />
+    if (status === 'needs_review') return <RotateCcw   size={14} style={{ color: '#F57F17' }} />
+    if (status === 'in_progress')  return <Clock       size={14} style={{ color: '#E65100' }} />
+    return null
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function LessonsIndex({ topics, transition, level }: LessonsIndexProps) {
+    const transitionLabel = transition.replace('_to_', ' → ')
+
+    function handleStart(topic: Topic) {
+        if (topic.locked) return
+        router.get(`/lessons/${topic.id}`)
+    }
+
+    const completed = topics.filter(t => t.status === 'completed').length
+    const total     = topics.length
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Lessons" />
 
-            <div style={{ padding: 'var(--s-6)', maxWidth: 900, margin: '0 auto' }}>
+            <div style={{ padding: '24px', maxWidth: 780, margin: '0 auto' }}>
 
-                <div style={{ marginBottom: 'var(--s-7)' }}>
-                    <p className="eyebrow" style={{ marginBottom: 'var(--s-2)' }}>Your learning path</p>
-                    <h1 className="h2">Lessons</h1>
-                    <p className="lede" style={{ fontSize: 'var(--fs-16)', marginTop: 'var(--s-2)' }}>
-                        Structured lessons to guide you from beginner to fluent.
-                    </p>
+                {/* Header */}
+                <div className="ls-header">
+                    <div>
+                        <div className="ls-level-badge">
+                            {transitionLabel}
+                        </div>
+                        <h1 style={{
+                            fontFamily: "'Cormorant Garamond', serif",
+                            fontStyle: 'italic',
+                            fontSize: 28,
+                            color: '#6B3F1F',
+                            margin: '0 0 4px',
+                        }}>
+                            Your learning plan
+                        </h1>
+                        <p style={{ fontSize: 13, color: '#A08070', margin: 0 }}>
+                            {completed} of {total} topics completed
+                        </p>
+                    </div>
+
+                    {/* Progress ring — simple bar */}
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{
+                            fontSize: 28,
+                            fontWeight: 500,
+                            fontFamily: "'Cormorant Garamond', serif",
+                            color: '#6B3F1F',
+                        }}>
+                            {total > 0 ? Math.round((completed / total) * 100) : 0}%
+                        </div>
+                        <p style={{ fontSize: 11, color: '#A08070', margin: 0 }}>complete</p>
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s-3)' }}>
-                    {lessons.map((lesson) => (
-                        <div key={lesson.id} className="lesson-card" style={{ flexDirection: 'row', overflow: 'visible' }}>
-                            <div style={{
-                                width: 56, height: 56, borderRadius: 'var(--r-md)',
-                                background: 'var(--bg-sunken)', display: 'grid', placeItems: 'center',
-                                fontSize: 28, flexShrink: 0, margin: 'var(--s-4)',
-                            }}>
-                                {lesson.emoji}
+                {/* Topic list */}
+                <div className="ls-topics">
+                    {topics.map(topic => (
+                        <div
+                            key={topic.id}
+                            className={`ls-topic-card ${topic.status} ${topic.locked ? 'locked' : ''}`}
+                            onClick={() => handleStart(topic)}
+                            role={topic.locked ? 'listitem' : 'button'}
+                            tabIndex={topic.locked ? -1 : 0}
+                            onKeyDown={e => e.key === 'Enter' && handleStart(topic)}
+                        >
+                            {/* Order number */}
+                            <div className="ls-topic-num">
+                                {topic.status === 'completed'
+                                    ? '✓'
+                                    : topic.locked
+                                        ? <Lock size={13} />
+                                        : topic.order
+                                }
                             </div>
-                            <div style={{ flex: 1, padding: 'var(--s-4) var(--s-4) var(--s-4) 0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 'var(--s-1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)' }}>
-                                    <span className={`level ${lesson.level}`}>{lesson.level.toUpperCase()}</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ink-subtle)', fontSize: 'var(--fs-12)', fontFamily: 'var(--font-mono)' }}>
-                                        <Clock size={12} />
-                                        {lesson.duration}
-                                    </span>
-                                    {lesson.done && <span className="badge soft-success">Completed</span>}
+
+                            {/* Content */}
+                            <div className="ls-topic-body">
+                                <div className="ls-topic-title">{topic.title}</div>
+                                <div className="ls-topic-desc">{topic.description}</div>
+                            </div>
+
+                            {/* Meta + CTA */}
+                            <div className="ls-topic-meta">
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        justifyContent: 'flex-end',
+                                        marginBottom: 4,
+                                    }}>
+                                        <StatusIcon status={topic.status} />
+                                        <span className={`ls-status-badge ${topic.status}`}>
+                                            {STATUS_LABEL[topic.status]}
+                                        </span>
+                                    </div>
+                                    {topic.score !== null && (
+                                        <div className="ls-score">{topic.score}/100</div>
+                                    )}
                                 </div>
-                                <p style={{ fontWeight: 600, margin: 0, fontSize: 'var(--fs-16)', color: 'var(--ink)' }}>{lesson.title}</p>
-                                <p className="small" style={{ margin: 0 }}>{lesson.description}</p>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', padding: 'var(--s-4)', flexShrink: 0 }}>
-                                {lesson.done ? (
-                                    <Link href="#" className="btn btn-sm btn-secondary">Review</Link>
-                                ) : (
-                                    <Link href="#" className="btn btn-sm btn-primary">
-                                        <BookOpen size={14} />
-                                        Start
-                                    </Link>
+
+                                {!topic.locked && (
+                                    <button
+                                        className={`ls-start-btn ${topic.status === 'completed' ? 'secondary' : ''}`}
+                                        onClick={e => { e.stopPropagation(); handleStart(topic) }}
+                                    >
+                                        {STATUS_CTA[topic.status]}
+                                    </button>
                                 )}
                             </div>
                         </div>
                     ))}
                 </div>
-
             </div>
         </AppLayout>
-    );
+    )
 }

@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LessonController;
 use App\Http\Controllers\PlacementController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Settings\PasswordController;
@@ -49,6 +51,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
     Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding');
     Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+    Route::get('/onboarding/interests', [OnboardingController::class, 'getInterests'])->name('onboarding.interests');
 });
 
 Route::middleware(['auth', 'verified', 'role:student','onboarding.done'])->group(function () {
@@ -59,8 +62,17 @@ Route::middleware(['auth', 'verified', 'role:student','onboarding.done'])->group
 
 // ── Authenticated + verified ──────────────────────────────────────────────────
 Route::middleware(['auth', 'verified', 'role:student', 'placement.done'])->group(function () {
-    Route::get('/dashboard',  fn() => Inertia::render('dashboard'))->name('dashboard');
-    Route::get('/lessons',    fn() => Inertia::render('lessons/index'))->name('lessons.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Lessons
+    Route::get('/lessons', [LessonController::class, 'index'])->name('lessons.index');
+    Route::get('/lessons/{topicId}', [LessonController::class, 'show'])->name('lessons.show');
+
+    // API endpoints — el frontend los llama con fetch
+    Route::post('/lessons/theory',    [LessonController::class, 'theory'])->name('lessons.theory');
+    Route::post('/lessons/exercises', [LessonController::class, 'exercises'])->name('lessons.exercises');
+    Route::post('/lessons/evaluate',  [LessonController::class, 'evaluate'])->name('lessons.evaluate');
+    Route::post('/lessons/complete',  [LessonController::class, 'complete'])->name('lessons.complete');
+
     Route::get('/vocabulary', fn() => Inertia::render('vocabulary/index'))->name('vocabulary.index');
     Route::get('/grammar',    fn() => Inertia::render('grammar/index'))->name('grammar.index');
     Route::get('/flashcards', fn() => Inertia::render('flashcards/index'))->name('flashcards.index');

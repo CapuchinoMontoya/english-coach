@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -76,5 +77,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function aiContext(): HasOne
     {
         return $this->hasOne(UserAiContext::class);
+    }
+
+    public function topicProgress(): HasMany
+    {
+        return $this->hasMany(StudentTopicProgress::class);
     }
 }

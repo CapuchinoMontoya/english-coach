@@ -3,15 +3,49 @@ import { type SharedData, type BreadcrumbItem } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { BookOpen, Flame, Layers, Library, Sparkles, TrendingUp } from 'lucide-react';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
+interface DashboardProps {
+    auth: {
+        user: {
+            id: number
+            name: string
+            email: string
+        }
+    }
+    profile: {
+        real_level: string
+        declared_level: string | null
+        transition: string | null     // "A2_to_B1"
+    }
+    currentTopic: {
+        id: number
+        title: string
+        description: string
+        order: number
+        estimated_sessions: number
+        sessions_done: number
+    } | null
+    stats: {
+        completed_topics: number
+        total_topics: number
+        streak_days: number
+        progress_percent: number
+    }
+    wordOfTheDay: WordOfTheDay;
+}
 
-const wordOfTheDay = {
-    word: 'serendipity',
-    pron: '/ˌserənˈdipɪti/',
-    pos: 'noun',
-    definition: 'The occurrence of events by chance in a happy or beneficial way.',
-    example: '"A fortunate stroke of serendipity brought them together."',
-};
+interface Meaning {
+    type: string;
+    definition: string;
+}
+
+interface WordOfTheDay {
+    word: string;
+    pronunciation: string;
+    meanings: Meaning[];
+    level: string;
+}
+
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
 const quickActions = [
     {
@@ -44,17 +78,20 @@ const quickActions = [
     },
 ];
 
-const progressItems = [
-    { label: 'Lessons completed', value: 3, total: 24, pct: 13 },
-    { label: 'Vocabulary mastered', value: 47, total: 200, pct: 24 },
-    { label: 'Flashcards reviewed', value: 120, total: 500, pct: 24 },
-];
-
-export default function Dashboard() {
-    const { auth } = usePage<SharedData>().props;
+export default function Dashboard({ auth, profile, currentTopic, stats, wordOfTheDay }: DashboardProps) {
     const firstName = auth.user.name.split(' ')[0];
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+    // Generamos los items de progreso dinámicamente basados en las stats disponibles en la interfaz
+    const progressItems = [
+        {
+            label: 'Topics completed',
+            value: stats.completed_topics,
+            total: stats.total_topics,
+            pct: stats.progress_percent
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -75,7 +112,7 @@ export default function Dashboard() {
                         <span className="flame">
                             <Flame size={18} />
                         </span>
-                        <span>5-day streak</span>
+                        <span>{stats.streak_days}-day streak</span>
                     </div>
                 </div>
 
@@ -85,13 +122,12 @@ export default function Dashboard() {
                         <p className="eyebrow" style={{ marginBottom: 'var(--s-3)' }}>Word of the day</p>
                         <div className="word" style={{ fontSize: 'var(--fs-48)' }}>{wordOfTheDay.word}</div>
                         <div style={{ display: 'flex', gap: 'var(--s-3)', alignItems: 'center', marginTop: 'var(--s-2)' }}>
-                            <span className="pron">{wordOfTheDay.pron}</span>
-                            <span className="pos badge">{wordOfTheDay.pos}</span>
+                            <span className="pron">{wordOfTheDay.pronunciation}</span>
+                            <span className="pos badge">{wordOfTheDay.level}</span>
                         </div>
                     </div>
                     <div style={{ flex: 2, minWidth: 240 }}>
-                        <p className="body" style={{ marginBottom: 'var(--s-2)' }}>{wordOfTheDay.definition}</p>
-                        <p className="small italic" style={{ color: 'var(--ink-subtle)' }}>{wordOfTheDay.example}</p>
+                        <p className="body" style={{ marginBottom: 'var(--s-2)' }}>{wordOfTheDay.meanings[0]?.definition}</p>
                         <div style={{ marginTop: 'var(--s-4)' }}>
                             <Link href="/vocabulary" className="btn btn-sm btn-secondary">
                                 See more words
