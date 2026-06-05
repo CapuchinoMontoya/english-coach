@@ -139,41 +139,40 @@ export default function Onboarding({ user }: OnboardingProps) {
     const [submitting, setSubmitting] = useState<boolean>(false)
 
     // Estados para las burbujas dinámicas y texto personalizado
-    const [baseBubbles, setBaseBubbles] = useState<string[]>([])       // Nivel 1 (Fijas)
-    const [dynamicBubbles, setDynamicBubbles] = useState<string[]>([]) // Niveles profundos
-    
+    const [currentSubOptions, setCurrentSubOptions] = useState<{ name: string, turns: number }[]>([]);
     const [poppingBubbles, setPoppingBubbles] = useState<string[]>([])
-    const [loadingBubbles, setLoadingBubbles] = useState<boolean>(false)
     const [customTag, setCustomTag] = useState<string>('')
-    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [activeCategory, setActiveCategory] = useState<string>('');
 
     const currentStep = STEPS[step]
     const isLast = step === STEPS.length - 1
 
-    useEffect(() => {
-        fetchRelatedTopics('')
-    }, [])
+    const rootCategories = ['Music', 'Movies & TV', 'Video Games', 'Sports & Fitness', 'Food & Cooking'];
+    const genreCategories = [
+        // Movies & TV
+        'Action', 'Sci-Fi', 'Horror', 'Comedy', 'Drama', 'Documentaries',
+        // Video Games
+        'RPG', 'Shooter', 'Adventure', 'Strategy', 'Puzzle', 'Sports',
+        // Music
+        'Rock', 'Pop', 'Rap & Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Latin',
+        // Sports & Fitness
+        'Football', 'Basketball', 'Tennis', 'Baseball', 'Cycling', 'Running',
+        // Food & Cooking
+        'Chicken', 'Seafood', 'Beef', 'Pasta', 'Vegetarian', 'Dessert', 'Breakfast', 'Vegan',
+    ];
 
-    async function fetchRelatedTopics(topic: string) {
-        setLoadingBubbles(true)
-        try {
-            const response = await axios.get((window as any).route('onboarding.interests'), {
-                params: { topic }
-            })
-            
-            const similares: string[] = response.data.topics || []
+    const rootCategoryIcons: Record<string, string> = {
+        'Music':           '🎵',
+        'Movies & TV':     '🎬',
+        'Video Games':     '🎮',
+        'Sports & Fitness':'⚽',
+        'Food & Cooking':  '🍳',
+    };
 
-            if (topic === '') {
-                setBaseBubbles(similares)
-            } else {
-                setDynamicBubbles(similares)
-            }
-        } catch (error) {
-            console.error("Error fetching AI topics", error)
-        } finally {
-            setLoadingBubbles(false)
-        }
+    function isLevel3(name: string) {
+        return !rootCategories.includes(name) && !genreCategories.includes(name);
     }
+
 
     function selectOption(value: string) {
         if (currentStep.multiple) {
@@ -216,36 +215,76 @@ export default function Onboarding({ user }: OnboardingProps) {
         }
     }
 
-    function handleBubbleClick(item: string) {
-        setPoppingBubbles(prev => [...prev, item])
+    async function handleBubbleClick(item: string) {
+        setPoppingBubbles(prev => [...prev, item]);
 
-        setTimeout(() => {
-            setSelected(prev => prev.includes(item) ? prev : [...prev, item])
-            setDynamicBubbles([])
-            setPoppingBubbles(prev => prev.filter(b => b !== item))
-        }, 300)
+        // Actualizar contexto si es categoría raíz
+        let categoryContext = activeCategory;
+        if (rootCategories.includes(item)) {
+            categoryContext = item;
+            setActiveCategory(item);
+        }
 
-        if (debounceTimer.current) clearTimeout(debounceTimer.current)
+        try {
+            const response = await axios.get((window as any).route('onboarding.interests'), {
+                params: { topic: item, category: categoryContext }
+            });
 
-        debounceTimer.current = setTimeout(() => {
-            fetchRelatedTopics(item)
-        }, 800)
+            const nuevasRecomendaciones = (response.data.topics || []).map((name: string) => ({ name, turns: 0 }));
+
+            setCurrentSubOptions(prev => {
+                const MAX_SUBS = 12;
+
+                // 1. Aumentar turnos a Nivel 3 existentes
+                let updated = prev.map(b => ({
+                    ...b,
+                    turns: isLevel3(b.name) ? b.turns + 1 : b.turns
+                }));
+
+                // 2. Borrar Nivel 3 que cumplieron 3 turnos
+                updated = updated.filter(b => !(isLevel3(b.name) && b.turns >= 3));
+
+                // 3. Añadir solo las realmente nuevas (preserva turn counts existentes)
+                const existingNames = new Set(updated.map(b => b.name));
+                const trulyNew = nuevasRecomendaciones.filter((r: { name: string; turns: number }) => !existingNames.has(r.name));
+                let result = [...updated, ...trulyNew];
+
+                // 4. Si se pasa del límite, quitar las más viejas (mayor turns) primero
+                if (result.length > MAX_SUBS) {
+                    result.sort((a, b) => b.turns - a.turns);
+                    result = result.slice(result.length - MAX_SUBS);
+                }
+
+                return result;
+            });
+
+            setSelected(prev => prev.includes(item) ? prev : [...prev, item]);
+        } catch (error) {
+            console.error("Error", error);
+        }
+
+        setPoppingBubbles(prev => prev.filter(b => b !== item));
     }
 
     function handleCustomTagSubmit() {
         if (!customTag.trim()) return
-        
+
         const newTag = customTag.trim()
-        
         setSelected(prev => prev.includes(newTag) ? prev : [...prev, newTag])
         setCustomTag('')
-        setDynamicBubbles([])
-        
-        if (debounceTimer.current) clearTimeout(debounceTimer.current)
-        debounceTimer.current = setTimeout(() => {
-            fetchRelatedTopics(newTag)
-        }, 800)
+
+        // Opcional: Podrías buscar en el árbol si el custom tag casualmente coincide 
+        // con alguna llave, pero generalmente los tags custom son nodos finales.
     }
+
+    const allVisibleBubbles = [
+        ...rootCategories
+            .filter(c => !selected.includes(c))
+            .map(name => ({ name, isRoot: true })),
+        ...currentSubOptions
+            .filter(c => !selected.includes(c.name))
+            .map(c => ({ name: c.name, isRoot: false })),
+    ];
 
     return (
         <div className="ob-root" onKeyDown={handleKeyDown}>
@@ -280,50 +319,35 @@ export default function Onboarding({ user }: OnboardingProps) {
                     {currentStep.type === 'tags' ? (
 
                         <div className="ob-bubbles-ui">
-                            
-                            <div className="ob-bubbles-container min-h-[150px] flex flex-wrap gap-3 items-center justify-center">
-                                
-                                {/* MAGIA: Juntamos ambas listas y filtramos las que ya atrapó */}
-                                {(() => {
-                                    const allVisible = [...baseBubbles, ...dynamicBubbles].filter(b => !selected.includes(b));
 
-                                    if (allVisible.length === 0 && !loadingBubbles) {
-                                        return <p className="text-gray-400 italic">Type a topic below or click continue.</p>
-                                    }
-
-                                    return allVisible.map((bubble, index) => {
-                                        const isPopping = poppingBubbles.includes(bubble)
-                                        const delay = `${(index * 0.1)}s` 
-
-                                        return (
-                                            <div
-                                                key={bubble}
-                                                className={`bubble ${isPopping ? 'popping' : ''} animate-fade-in`}
-                                                style={{ animationDelay: isPopping ? '0s' : delay }}
-                                                onClick={() => handleBubbleClick(bubble)}
-                                            >
-                                                {bubble}
-                                            </div>
-                                        )
-                                    })
-                                })()}
+                            <div className="ob-bubbles-container">
+                                {allVisibleBubbles.length === 0 ? (
+                                    <p className="ob-bubbles-empty">Type a topic below or click continue.</p>
+                                ) : (
+                                    allVisibleBubbles.map((bubble, index) => (
+                                        <div
+                                            key={bubble.name}
+                                            className={`bubble ${poppingBubbles.includes(bubble.name) ? 'popping' : ''} ${bubble.isRoot ? 'bubble-root' : ''}`}
+                                            style={{ animationDelay: poppingBubbles.includes(bubble.name) ? '0s' : `${index * 0.05}s` }}
+                                            onClick={() => handleBubbleClick(bubble.name)}
+                                        >
+                                            {bubble.isRoot && rootCategoryIcons[bubble.name] && (
+                                                <span className="bubble-icon">{rootCategoryIcons[bubble.name]}</span>
+                                            )}
+                                            {bubble.name}
+                                        </div>
+                                    ))
+                                )}
                             </div>
 
-                            {/* Indicador de carga sutil */}
-                            {loadingBubbles && (
-                                <div className="text-center text-sm text-purple-500 mt-2 font-medium animate-pulse">
-                                    Finding related topics... ✨
-                                </div>
-                            )}
-
                             {/* Input para agregar temas manuales */}
-                            <div className="flex justify-center items-center gap-2 mt-6 max-w-md mx-auto">
-                                <input 
-                                    type="text" 
+                            <div className="ob-custom-row">
+                                <input
+                                    type="text"
                                     value={customTag}
                                     onChange={(e) => setCustomTag(e.target.value)}
-                                    placeholder="Don't see it? Type your own..."
-                                    className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all text-sm"
+                                    placeholder="Don't see it? Type your own…"
+                                    className="ob-custom-input"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault()
@@ -331,10 +355,10 @@ export default function Onboarding({ user }: OnboardingProps) {
                                         }
                                     }}
                                 />
-                                <button 
+                                <button
                                     onClick={handleCustomTagSubmit}
                                     disabled={!customTag.trim()}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                                    className="ob-custom-btn"
                                 >
                                     Add
                                 </button>
@@ -342,13 +366,12 @@ export default function Onboarding({ user }: OnboardingProps) {
 
                             {/* INVENTARIO */}
                             {selected.length > 0 && (
-                                <div className="ob-inventory mt-8 pt-6 border-t border-gray-100">
-                                    <div className="ob-inventory-title font-semibold mb-3 text-gray-700 text-sm uppercase tracking-wide">
-                                        Your Profile:
-                                    </div>
-                                    <div className="ob-tags-inventory flex flex-wrap gap-2">
+                                <div className="ob-inventory">
+                                    <span className="ob-inventory-title">Your interests</span>
+                                    <div className="ob-tags-inventory">
                                         {selected.map(tag => (
-                                            <span key={tag} className="ob-badge bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm">
+                                            <span key={tag} className="ob-badge">
+                                                {rootCategoryIcons[tag] && <span className="ob-badge-icon">{rootCategoryIcons[tag]}</span>}
                                                 {tag}
                                             </span>
                                         ))}
