@@ -13,6 +13,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\PlacementController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\SessionController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,9 @@ Route::get('auth/google', [GoogleAuthController::class, 'redirect'])->name('auth
 Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 Route::get('auth/google/invite', [GoogleAuthController::class, 'showInvite'])->name('auth.google.invite');
 Route::post('auth/google/invite', [GoogleAuthController::class, 'completeInvite'])->name('auth.google.invite.submit');
+
+Route::get('/test-listening', fn() => Inertia::render('test-listening'))
+    ->middleware('auth')->name('test.listening');
 
 // ── Guests only ───────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -63,15 +67,13 @@ Route::middleware(['auth', 'verified', 'role:student','onboarding.done'])->group
 // ── Authenticated + verified ──────────────────────────────────────────────────
 Route::middleware(['auth', 'verified', 'role:student', 'placement.done'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    // Lessons
+    // Lista de temas del plan
     Route::get('/lessons', [LessonController::class, 'index'])->name('lessons.index');
-    Route::get('/lessons/{topicId}', [LessonController::class, 'show'])->name('lessons.show');
 
-    // API endpoints — el frontend los llama con fetch
-    Route::post('/lessons/theory',    [LessonController::class, 'theory'])->name('lessons.theory');
-    Route::post('/lessons/exercises', [LessonController::class, 'exercises'])->name('lessons.exercises');
-    Route::post('/lessons/evaluate',  [LessonController::class, 'evaluate'])->name('lessons.evaluate');
-    Route::post('/lessons/complete',  [LessonController::class, 'complete'])->name('lessons.complete');
+    // Sesión de un tema
+    Route::get('/lessons/{topicId}', [SessionController::class, 'show'])->name('lessons.session');
+    Route::post('/lessons/session/generate', [SessionController::class, 'generate'])->name('lessons.session.generate');
+    Route::post('/lessons/session/submit',   [SessionController::class, 'submit'])->name('lessons.session.submit');
 
     Route::get('/vocabulary', fn() => Inertia::render('vocabulary/index'))->name('vocabulary.index');
     Route::get('/grammar',    fn() => Inertia::render('grammar/index'))->name('grammar.index');

@@ -10,12 +10,14 @@ class AIContextBuilderService
 {
     /**
      * Construye el system prompt completo para una sesión.
-     * Este es el "LLM personal" del usuario — su perfil comprimido + técnica recomendada.
+     *
+     * @param array $extra  Datos adicionales para el prompt (ej: ['sessionState' => [...]])
      */
     public function buildSystemPrompt(
-        User            $user,
-        string          $mode,
-        ?CurriculumTopic $topic = null
+        User             $user,
+        string           $mode,
+        ?CurriculumTopic $topic = null,
+        array            $extra = []
     ): string {
         $profile   = $user->learningProfile;
         $aiContext = $user->aiContext?->context ?? [];
@@ -33,8 +35,9 @@ class AIContextBuilderService
                 ->first();
         }
 
-        return view("ai.prompts.{$mode}", compact(
-            'user', 'profile', 'aiContext', 'topic', 'technique', 'firstName'
+        return view("ai.prompts.{$mode}", array_merge(
+            compact('user', 'profile', 'aiContext', 'topic', 'technique', 'firstName'),
+            $extra
         ))->render();
     }
 }

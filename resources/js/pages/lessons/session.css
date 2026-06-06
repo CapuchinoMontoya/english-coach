@@ -1,0 +1,200 @@
+/* ─── Session-specific styles (complementa lessons.css) ──────────────────── */
+
+/* Meta bar — número de sesión, aspecto, score acumulado */
+.session-meta {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 12px 18px;
+    background: #FFF8F5;
+    border: 1px solid #FFE0D0;
+    border-radius: 10px;
+}
+
+.session-meta-item {
+    font-size: 12px;
+    color: #A08070;
+}
+
+.session-meta-item strong {
+    color: #6B3F1F;
+    font-weight: 500;
+}
+
+/* Intro de cada fase */
+.phase-intro {
+    font-size: 14px;
+    color: #A08070;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+/* Warm-up banner */
+.warmup-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #F57F17;
+    background: #FFF8E1;
+    padding: 9px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+/* Free production */
+.production-prompt-box {
+    background: #F0F9FF;
+    border: 1px solid #B3D9F5;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+}
+
+.production-prompt-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #0277BD;
+    margin-bottom: 8px;
+}
+
+.production-prompt-text {
+    font-size: 15px;
+    color: #1C1107;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.production-targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.production-target-chip {
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid #B3D9F5;
+    color: #0277BD;
+}
+
+.production-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 14px 16px;
+    border: 1px solid #E8DDD4;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.7;
+    color: #2D1B10;
+    background: #fff;
+    outline: none;
+    resize: vertical;
+    transition: border-color .15s;
+}
+
+.production-textarea:focus { border-color: #A08070; }
+
+.word-count {
+    font-size: 12px;
+    color: #A08070;
+    text-align: right;
+    margin-top: 6px;
+}
+
+.word-count.met { color: #2E7D32; font-weight: 500; }
+
+/* Mastery result banner */
+.mastery-banner {
+    text-align: center;
+    padding: 30px 24px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+}
+
+.mastery-banner.completed     { background: #F1F8E9; border: 1px solid #A5D6A7; }
+.mastery-banner.consolidation { background: #FFF8E1; border: 1px solid #FFE082; }
+.mastery-banner.next          { background: #F0F9FF; border: 1px solid #B3D9F5; }
+
+.mastery-emoji { font-size: 46px; margin-bottom: 8px; line-height: 1; }
+
+.mastery-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 25px;
+    margin-bottom: 6px;
+    color: #1C1107;
+}
+
+.mastery-msg {
+    font-size: 14px;
+    color: #5D3A1A;
+    line-height: 1.6;
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+/* Score chips */
+.score-chips {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+.score-chip {
+    text-align: center;
+    padding: 10px 20px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #E8DDD4;
+    min-width: 90px;
+}
+
+.score-chip-num {
+    font-size: 24px;
+    font-weight: 500;
+    color: #6B3F1F;
+    font-family: 'Cormorant Garamond', serif;
+    line-height: 1.1;
+}
+
+.score-chip-label {
+    font-size: 9.5px;
+    color: #A08070;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-top: 2px;
+}
+
+/* Production feedback box in results */
+.production-fb-box {
+    background: #FFF8F5;
+    border: 1px solid #FFE0D0;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.production-fb-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #C4622D;
+    margin-bottom: 6px;
+}
+
+.production-fb-text {
+    font-size: 13px;
+    color: #5D3A1A;
+    line-height: 1.6;
+}

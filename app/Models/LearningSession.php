@@ -12,11 +12,16 @@ class LearningSession extends Model
         'mode',
         'topic',
         'score',
-        'counts_for_plan'
+        'counts_for_plan',
+        'curriculum_topic_id',
+        'session_number',
+        'topic_aspect',
+        'generated_content',
     ];
 
     protected $casts = [
         'counts_for_plan' => 'boolean',
+        'generated_content' => 'array',
     ];
 
     public function user()
