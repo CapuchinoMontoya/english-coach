@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\UpdateUserAiContextJob;
+use App\Jobs\DiscoverClipJob;
+use App\Jobs\DiscoverListeningJob;
 use App\Models\CurriculumTopic;
 use App\Models\LearningSession;
 use App\Models\TeachingTechnique;
 use App\Services\AI\AIContextBuilderService;
 use App\Services\AI\AIProviderService;
 use App\Services\AI\SessionOrchestratorService;
+use App\Services\Listening\ClipActivityService;
+use App\Services\Listening\ListeningActivityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +25,8 @@ class SessionController extends Controller
         private AIProviderService          $ai,
         private AIContextBuilderService    $context,
         private SessionOrchestratorService $orchestrator,
+        private ListeningActivityService   $listening,
+        private ClipActivityService        $clips,
     ) {}
 
     // ── Página de la sesión ───────────────────────────────────────────────────
@@ -193,10 +199,43 @@ class SessionController extends Controller
             $score
         );
 
+        $suggestActivity = null;
+        if ($this->listening->shouldSuggest($user)) {
+            // Alterna entre canción y clip para variar la práctica;
+            // si el tipo preferido no está en caché, cae al otro.
+            $preferClip = LearningSession::query()
+                ->where('user_id', $user->id)
+                ->where('mode', 'lesson')
+                ->whereNotNull('score')
+                ->count() % 2 === 0;
+
+            $cached = $preferClip
+                ? ($this->clips->getCached($user) ?? $this->listening->getCached($user))
+                : ($this->listening->getCached($user) ?? $this->clips->getCached($user));
+
+            if ($cached) {
+                $suggestActivity = [
+                    'id'     => $cached->id,
+                    'type'   => $cached->type,
+                    'title'  => $cached->title,
+                    'artist' => $cached->artist,
+                ];
+            }
+
+            // Rellenar el catálogo en segundo plano con lo que falte
+            if (! $cached || $cached->type !== 'clip') {
+                DiscoverClipJob::dispatch($user->id);
+            }
+            if (! $cached || $cached->type !== 'song') {
+                DiscoverListeningJob::dispatch($user->id, $topic->id);
+            }
+        }
+
         // 6. Devolver evaluación + decisión de mastery
         return response()->json([
             'evaluation' => $evaluation,
             'result'     => $result,
+            'suggest_activity' => $suggestActivity,
         ]);
     }
 

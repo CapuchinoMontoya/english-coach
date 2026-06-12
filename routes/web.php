@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\ListeningController;
 use App\Http\Controllers\PlacementController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\SessionController;
@@ -58,7 +59,7 @@ Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
     Route::get('/onboarding/interests', [OnboardingController::class, 'getInterests'])->name('onboarding.interests');
 });
 
-Route::middleware(['auth', 'verified', 'role:student','onboarding.done'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:student', 'onboarding.done'])->group(function () {
     Route::get('/placement', [PlacementController::class, 'index'])->name('placement');
     Route::post('/placement/chat', [PlacementController::class, 'chat'])->name('placement.chat');
     Route::post('/placement/complete', [PlacementController::class, 'complete'])->name('placement.complete');
@@ -74,6 +75,14 @@ Route::middleware(['auth', 'verified', 'role:student', 'placement.done'])->group
     Route::get('/lessons/{topicId}', [SessionController::class, 'show'])->name('lessons.session');
     Route::post('/lessons/session/generate', [SessionController::class, 'generate'])->name('lessons.session.generate');
     Route::post('/lessons/session/submit',   [SessionController::class, 'submit'])->name('lessons.session.submit');
+
+    Route::get('/listening', [ListeningController::class, 'index'])->name('listening.index');
+    Route::get('/listening/{id}', [ListeningController::class, 'show'])->name('listening.show');
+    Route::post('/listening/complete', [ListeningController::class, 'complete'])->name('listening.complete');
+
+    Route::patch('settings/profile',        [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('settings/profile/avatar',  [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::delete('settings/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
 
     Route::get('/vocabulary', fn() => Inertia::render('vocabulary/index'))->name('vocabulary.index');
     Route::get('/grammar',    fn() => Inertia::render('grammar/index'))->name('grammar.index');

@@ -10,9 +10,9 @@ use Illuminate\Support\Collection;
 class SessionOrchestratorService
 {
     // Reglas de mastery — todas deben cumplirse
-    private const MIN_SESSIONS        = 2;     // nunca se completa en una sentada
+    private const MIN_SESSIONS        = 1;     // mínimo de sesiones para completar un tema
     private const MIN_CUMULATIVE      = 75;    // promedio ponderado mínimo
-    private const MIN_LAST_TWO_SCORE  = 70;    // consistencia en las últimas 2 sesiones
+    private const MIN_LAST_TWO_SCORE  = 70;    // consistencia en las últimas N sesiones
 
     /**
      * Determina el estado de la sesión actual para un tema.
@@ -102,11 +102,11 @@ class SessionOrchestratorService
         $lastTwoScores = collect($data['sessions'])->take(-2)->pluck('score');
 
         $mastered =
-            empty($data['aspects_remaining'])                          // todos los aspectos cubiertos
-            && $cumulativeScore >= self::MIN_CUMULATIVE                 // promedio sólido
-            && $sessionsCount >= self::MIN_SESSIONS                     // mínimo 2 sesiones
-            && $lastTwoScores->count() >= 2                            // hay al menos 2 sesiones
-            && $lastTwoScores->every(fn ($s) => $s >= self::MIN_LAST_TWO_SCORE); // consistencia
+            empty($data['aspects_remaining'])                                        // todos los aspectos cubiertos
+            && $cumulativeScore >= self::MIN_CUMULATIVE                              // promedio sólido
+            && $sessionsCount >= self::MIN_SESSIONS                                  // sesiones mínimas
+            && $lastTwoScores->count() >= self::MIN_SESSIONS                        // hay suficientes sesiones
+            && $lastTwoScores->every(fn ($s) => $s >= self::MIN_LAST_TWO_SCORE);    // consistencia
 
         // 6. Persistir el estado
         $progress->update([
@@ -176,7 +176,7 @@ class SessionOrchestratorService
 
         if (! $next) return;   // era el último tema del nivel — ¡subió de nivel!
 
-        StudentTopicProgress::firstOrCreate(
+        StudentTopicProgress::updateOrCreate(
             ['user_id' => $user->id, 'curriculum_topic_id' => $next->id],
             ['status' => 'in_progress', 'started_at' => now()]
         );

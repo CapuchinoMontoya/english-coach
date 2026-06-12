@@ -5,6 +5,7 @@ import {
     BarChart2,
     BookOpen,
     Flame,
+    Headphones,
     Layers,
     LayoutDashboard,
     Library,
@@ -34,14 +35,15 @@ const navGroups: NavGroup[] = [
     {
         title: 'Learn',
         items: [
-            { title: 'Lessons',    url: '/lessons',    icon: BookOpen },
+            { title: 'Lessons', url: '/lessons', icon: BookOpen },
             { title: 'Vocabulary', url: '/vocabulary', icon: Library },
-            { title: 'Grammar',    url: '/grammar',    icon: Sparkles },
+            { title: 'Grammar', url: '/grammar', icon: Sparkles },
         ],
     },
     {
         title: 'Practice',
         items: [
+            { title: 'Listening', url: '/listening', icon: Headphones },
             { title: 'Flashcards', url: '/flashcards', icon: Layers },
         ],
     },
@@ -49,7 +51,7 @@ const navGroups: NavGroup[] = [
         title: 'My Progress',
         items: [
             { title: 'Progress', url: '/progress', icon: BarChart2 },
-            { title: 'Streak',   url: '/streak',   icon: Flame },
+            { title: 'Streak', url: '/streak', icon: Flame },
         ],
     },
 ];
@@ -83,8 +85,7 @@ export function AppSidebar() {
                     height: 56,
                     display: 'flex',
                     alignItems: 'center',
-                    padding: open ? '0 12px' : '0',
-                    justifyContent: open ? 'flex-start' : 'center',
+                    /* Eliminamos los paddings condicionales de aquí */
                     borderBottom: '1px solid var(--line)',
                     flexShrink: 0,
                 }}
@@ -95,13 +96,20 @@ export function AppSidebar() {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
                         textDecoration: 'none',
                         overflow: 'hidden',
                         width: '100%',
+                        height: '100%', /* Ocupa todo el alto del padre */
+
+                        /* --- ESTA ES LA CLAVE DEL CENTRADO --- */
+                        /* Si está abierto, gap de 10px y padding a la izquierda.
+                           Si está cerrado, sin gap y sin padding para centrar. */
+                        gap: open ? 10 : 0,
+                        padding: open ? '0 12px' : '0',
+                        justifyContent: open ? 'flex-start' : 'center',
                     }}
                 >
-                    <AppLogo />
+                    <AppLogo open={open} />
                 </Link>
             </div>
 
@@ -247,7 +255,11 @@ export function AppSidebar() {
                         title={open ? undefined : auth.user.name}
                     >
                         {auth.user.avatar
-                            ? <img src={auth.user.avatar} alt={auth.user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ? <img
+                                src={`/storage/${auth.user.avatar}`}
+                                alt={auth.user.name}
+                                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                            />
                             : getInitials(auth.user.name)
                         }
                     </div>

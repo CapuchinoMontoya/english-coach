@@ -10,78 +10,78 @@ import './session.css'
 type ExerciseType = 'fill_blank' | 'multiple_choice' | 'error_correction' | 'word_order' | 'translation_es_to_en'
 
 interface Exercise {
-    id:          string
-    type:        ExerciseType
+    id: string
+    type: ExerciseType
     instruction: string
-    question:    string | string[]
-    options?:    string[]
-    answer:      string | number
+    question: string | string[]
+    options?: string[]
+    answer: string | number
 }
 
 interface GeneratedSession {
-    aspect:                 string
+    aspect: string
     grammar_points_covered: string[]
-    is_consolidation:       boolean
+    is_consolidation: boolean
     warmup?: {
-        intro:     string
+        intro: string
         exercises: Exercise[]
     }
     mini_lesson: {
         title: string
-        html:  string
+        html: string
     }
     practice: {
-        intro:     string
+        intro: string
         exercises: Exercise[]
     }
     free_production: {
-        prompt:            string
+        prompt: string
         target_structures: string[]
-        min_words:         number
+        min_words: number
     }
 }
 
 interface SessionState {
-    session_number:    number
-    is_first_session:  boolean
-    aspects_covered:   string[]
+    session_number: number
+    is_first_session: boolean
+    aspects_covered: string[]
     aspects_remaining: string[]
-    cumulative_score:  number
-    sessions_done:     number
-    min_sessions_met:  boolean
+    cumulative_score: number
+    sessions_done: number
+    min_sessions_met: boolean
 }
 
 interface ExerciseResult {
-    id:             string
-    correct:        boolean
+    id: string
+    correct: boolean
     student_answer: string | number
     correct_answer: string | number
-    feedback:       string
+    feedback: string
 }
 
 interface Evaluation {
-    session_score:            number
-    errors_this_session:      string[]
-    warmup_performance:       string
-    exercise_results:         ExerciseResult[]
+    session_score: number
+    errors_this_session: string[]
+    warmup_performance: string
+    exercise_results: ExerciseResult[]
     free_production_feedback: string
-    encouragement:            string
+    encouragement: string
 }
 
 interface SessionResult {
-    mastered:          boolean
-    session_score:     number
-    cumulative_score:  number
-    sessions_count:    number
+    mastered: boolean
+    session_score: number
+    cumulative_score: number
+    sessions_count: number
     aspects_remaining: string[]
-    next_step:         'topic_completed' | 'needs_consolidation' | 'next_session'
+    next_step: 'topic_completed' | 'needs_consolidation' | 'next_session'
 }
 
 interface SessionPageProps {
     topic: {
-        id:          number
-        order:       number
-        title:       string
+        id: number
+        order: number
+        title: string
         description: string
     }
     sessionState: SessionState
@@ -96,9 +96,9 @@ const csrf = () =>
 
 async function postJson(url: string, body: object) {
     const res = await fetch(url, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
-        body:    JSON.stringify(body),
+        body: JSON.stringify(body),
     })
     return res.json()
 }
@@ -111,7 +111,11 @@ function countWords(text: string): number {
 function resolveStudentAnswer(ex: Exercise, raw: string | number | number[] | undefined): string | number {
     if (raw === undefined || raw === null) return ''
     if (ex.type === 'word_order' && Array.isArray(raw)) {
-        const words = ex.question as string[]
+        // Aseguramos que sea un arreglo, si es string lo dividimos por espacios
+        const words = Array.isArray(ex.question) 
+            ? ex.question 
+            : (typeof ex.question === 'string' ? ex.question.split(' ') : []);
+            
         return raw.map(i => words[i]).join(' ')
     }
     return raw as string | number
@@ -123,7 +127,7 @@ function ExerciseInput({
     exercise, answer, onChange,
 }: {
     exercise: Exercise
-    answer:   string | number | number[] | undefined
+    answer: string | number | number[] | undefined
     onChange: (v: string | number | number[]) => void
 }) {
     switch (exercise.type) {
@@ -172,9 +176,13 @@ function ExerciseInput({
             )
 
         case 'word_order': {
-            const words    = exercise.question as string[]
-            const selected = (answer as number[]) ?? []
-            const usedSet  = new Set(selected)
+            // Protección: forzamos a que sea un arreglo para evitar que .map() explote
+            const words = Array.isArray(exercise.question) 
+                ? exercise.question 
+                : (typeof exercise.question === 'string' ? exercise.question.split(' ') : []);
+                
+            const selected: number[] = Array.isArray(answer) ? (answer as number[]) : []
+            const usedSet = new Set(selected)
 
             return (
                 <>
@@ -225,17 +233,18 @@ function ExerciseCard({
     exercise, index, total, answer, onChange,
 }: {
     exercise: Exercise
-    index:    number
-    total:    number
-    answer:   string | number | number[] | undefined
+    index: number
+    total: number
+    answer: string | number | number[] | undefined
     onChange: (v: string | number | number[]) => void
 }) {
     const isAnswered = answer !== undefined && answer !== null &&
         (typeof answer === 'string' ? answer.trim() !== '' :
-         Array.isArray(answer) ? answer.length > 0 : true)
+            Array.isArray(answer) ? answer.length > 0 : true)
 
+    // Validación segura para el .join()
     const questionText = exercise.type === 'word_order'
-        ? `Arrange these words: ${(exercise.question as string[]).join(' / ')}`
+        ? `Arrange these words: ${Array.isArray(exercise.question) ? exercise.question.join(' / ') : exercise.question}`
         : exercise.question as string
 
     return (
@@ -264,10 +273,10 @@ function Loading({ message }: { message: string }) {
 function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
     const steps: { id: Phase; label: string }[] = [
         ...(hasWarmup ? [{ id: 'warmup' as Phase, label: 'Warm-up' }] : []),
-        { id: 'lesson',     label: 'Lesson'     },
-        { id: 'practice',   label: 'Practice'   },
-        { id: 'production',  label: 'Writing'   },
-        { id: 'results',    label: 'Results'    },
+        { id: 'lesson', label: 'Lesson' },
+        { id: 'practice', label: 'Practice' },
+        { id: 'production', label: 'Writing' },
+        { id: 'results', label: 'Results' },
     ]
     const order = steps.map(s => s.id)
     const currentIdx = order.indexOf(phase === 'evaluating' ? 'production' : phase)
@@ -275,7 +284,7 @@ function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
     return (
         <div className="phase-bar">
             {steps.map((s, i) => {
-                const done   = i < currentIdx
+                const done = i < currentIdx
                 const active = i === currentIdx
                 return (
                     <React.Fragment key={s.id}>
@@ -294,22 +303,23 @@ function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SessionPage({ topic, sessionState }: SessionPageProps) {
-    const [phase,      setPhase]      = useState<Phase>('loading')
+    const [phase, setPhase] = useState<Phase>('loading')
     const [loadingMsg, setLoadingMsg] = useState('Alex is preparing your session...')
-    const [session,    setSession]    = useState<GeneratedSession | null>(null)
-    const [sessionId,  setSessionId]  = useState<number | null>(null)
+    const [session, setSession] = useState<GeneratedSession | null>(null)
+    const [sessionId, setSessionId] = useState<number | null>(null)
 
-    const [warmupAnswers,   setWarmupAnswers]   = useState<Record<string, string | number | number[]>>({})
+    const [warmupAnswers, setWarmupAnswers] = useState<Record<string, string | number | number[]>>({})
     const [practiceAnswers, setPracticeAnswers] = useState<Record<string, string | number | number[]>>({})
-    const [productionText,  setProductionText]  = useState('')
+    const [suggestedActivity, setSuggestedActivity] = useState<{ id: number; type?: string; title: string; artist: string } | null>(null)
+    const [productionText, setProductionText] = useState('')
 
     const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
-    const [result,     setResult]     = useState<SessionResult | null>(null)
+    const [result, setResult] = useState<SessionResult | null>(null)
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
-        { title: 'Lessons',   href: '/lessons'   },
-        { title: topic.title, href: '#'          },
+        { title: 'Lessons', href: '/lessons' },
+        { title: topic.title, href: '#' },
     ]
 
     // ── Generate session on mount ────────────────────────────────────────────
@@ -352,19 +362,19 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
         }))
 
         const submission = {
-            aspect:                 session.aspect,
+            aspect: session.aspect,
             grammar_points_covered: session.grammar_points_covered,
-            warmup_answers:         warmupSub,
-            practice_answers:       practiceSub,
+            warmup_answers: warmupSub,
+            practice_answers: practiceSub,
             free_production: {
                 prompt: session.free_production.prompt,
-                text:   productionText,
+                text: productionText,
             },
         }
 
         try {
             const data = await postJson((window as any).route('lessons.session.submit'), {
-                topic_id:   topic.id,
+                topic_id: topic.id,
                 session_id: sessionId,
                 submission,
             })
@@ -374,6 +384,7 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
             }
             setEvaluation(data.evaluation)
             setResult(data.result)
+            setSuggestedActivity(data.suggest_activity ?? null)
             setPhase('results')
         } catch {
             setLoadingMsg('Connection error during evaluation.')
@@ -392,7 +403,7 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
         return a !== undefined && (typeof a === 'string' ? a.trim() !== '' : Array.isArray(a) ? a.length > 0 : true)
     }) ?? false
 
-    const wordCount    = countWords(productionText)
+    const wordCount = countWords(productionText)
     const productionOk = session ? wordCount >= session.free_production.min_words : false
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -563,17 +574,16 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
                 {phase === 'results' && evaluation && result && (
                     <>
                         {/* Mastery banner */}
-                        <div className={`mastery-banner ${
-                            result.next_step === 'topic_completed'    ? 'completed' :
-                            result.next_step === 'needs_consolidation' ? 'consolidation' : 'next'
-                        }`}>
+                        <div className={`mastery-banner ${result.next_step === 'topic_completed' ? 'completed' :
+                                result.next_step === 'needs_consolidation' ? 'consolidation' : 'next'
+                            }`}>
                             <div className="mastery-emoji">
-                                {result.next_step === 'topic_completed'    ? '🎉' :
-                                 result.next_step === 'needs_consolidation' ? '💪' : '📈'}
+                                {result.next_step === 'topic_completed' ? '🎉' :
+                                    result.next_step === 'needs_consolidation' ? '💪' : '📈'}
                             </div>
                             <div className="mastery-title">
-                                {result.next_step === 'topic_completed'    ? 'Topic mastered!' :
-                                 result.next_step === 'needs_consolidation' ? 'Almost there!' : 'Great progress!'}
+                                {result.next_step === 'topic_completed' ? 'Topic mastered!' :
+                                    result.next_step === 'needs_consolidation' ? 'Almost there!' : 'Great progress!'}
                             </div>
                             <p className="mastery-msg">
                                 {result.next_step === 'topic_completed'
@@ -630,6 +640,28 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                        {suggestedActivity && (
+                            <div className="listening-suggest">
+                                <span className="listening-suggest-icon">
+                                    {suggestedActivity.type === 'clip' ? '🎬' : '🎧'}
+                                </span>
+                                <div className="listening-suggest-body">
+                                    <div className="listening-suggest-label">
+                                        {suggestedActivity.type === 'clip'
+                                            ? 'Movie break — watch a scene and answer'
+                                            : 'Listening break — train your ear'}
+                                    </div>
+                                    <div className="listening-suggest-title">{suggestedActivity.title}</div>
+                                    <div className="listening-suggest-artist">{suggestedActivity.artist}</div>
+                                </div>
+                                <button
+                                    className="btn-lesson-primary"
+                                    onClick={() => router.visit(`/listening/${suggestedActivity.id}?from=lesson`)}
+                                >
+                                    {suggestedActivity.type === 'clip' ? 'Watch →' : 'Play →'}
+                                </button>
                             </div>
                         )}
 

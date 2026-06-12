@@ -1,4 +1,4 @@
-export default function AppLogo() {
+export default function AppLogo({ open = true }: { open?: boolean }) {
     return (
         <>
             <div
@@ -32,23 +32,26 @@ export default function AppLogo() {
                     }}
                 />
             </div>
-            <div className="ml-1 grid flex-1 text-left">
-                <span
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontStyle: 'italic',
-                        fontSize: 'var(--fs-18)',
-                        lineHeight: 1,
-                        color: 'var(--ink)',
-                        letterSpacing: '-0.015em',
-                    }}
-                >
-                    Capuchino
-                </span>
-                <span style={{ fontSize: 'var(--fs-12)', color: 'var(--ink-muted)', lineHeight: 1.3 }}>
-                    English Coach
-                </span>
-            </div>
+
+            {open && (
+                <div className="ml-1 grid flex-1 text-left">
+                    <span
+                        style={{
+                            fontFamily: 'var(--font-display)',
+                            fontStyle: 'italic',
+                            fontSize: 'var(--fs-18)',
+                            lineHeight: 1,
+                            color: 'var(--ink)',
+                            letterSpacing: '-0.015em',
+                        }}
+                    >
+                        Capuchino
+                    </span>
+                    <span style={{ fontSize: 'var(--fs-12)', color: 'var(--ink-muted)', lineHeight: 1.3 }}>
+                        English Coach
+                    </span>
+                </div>
+            )}
         </>
     );
 }

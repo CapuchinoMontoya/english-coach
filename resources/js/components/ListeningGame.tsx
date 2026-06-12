@@ -77,6 +77,9 @@ export default function ListeningGame({
                 playerVars: {
                     controls: 0, disablekb: 1, modestbranding: 1, rel: 0,
                     origin: window.location.origin,
+                    cc_load_policy: 0,      // no cargar subtítulos
+                    iv_load_policy: 3,      // no mostrar anotaciones
+                    fs: 0,                  // sin fullscreen
                 },
                 events: {
                     onReady:       () => setState('ready'),

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -26,6 +27,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_id',
         'role',
         'homework_enabled',
+        'avatar', 
+        'email_notifications',
     ];
 
     /**
@@ -47,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'homework_enabled' => 'boolean',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'email_notifications' => 'boolean',
     ];
 
     public function learningProfile()
@@ -82,5 +86,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function topicProgress(): HasMany
     {
         return $this->hasMany(StudentTopicProgress::class);
+    }
+
+    protected function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar) return null;
+        return Storage::disk('public')->url($this->avatar);
     }
 }

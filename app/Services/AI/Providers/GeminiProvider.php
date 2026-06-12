@@ -18,7 +18,8 @@ class GeminiProvider implements AIProvider
     public function complete(string $systemPrompt, array $messages, int $maxTokens = 1024): string
     {
         $response = Http::timeout(60)
-            ->post(self::BASE . "/{$this->model}:generateContent?key={$this->apiKey}",
+            ->post(
+                self::BASE . "/{$this->model}:generateContent?key={$this->apiKey}",
                 $this->buildBody($systemPrompt, $messages, $maxTokens)
             );
 
@@ -33,7 +34,8 @@ class GeminiProvider implements AIProvider
     {
         // alt=sse activa el formato Server-Sent Events en Gemini
         $response = Http::withOptions(['stream' => true, 'read_timeout' => 60])
-            ->post(self::BASE . "/{$this->model}:streamGenerateContent?alt=sse&key={$this->apiKey}",
+            ->post(
+                self::BASE . "/{$this->model}:streamGenerateContent?alt=sse&key={$this->apiKey}",
                 $this->buildBody($systemPrompt, $messages, $maxTokens)
             );
 
@@ -72,13 +74,16 @@ class GeminiProvider implements AIProvider
             'systemInstruction' => [
                 'parts' => [['text' => $systemPrompt]],
             ],
-            'contents' => array_map(fn ($msg) => [
+            'contents' => array_map(fn($msg) => [
                 'role'  => $msg['role'] === 'assistant' ? 'model' : 'user',
                 'parts' => [['text' => $msg['content']]],
             ], $messages),
             'generationConfig' => [
                 'maxOutputTokens' => $maxTokens,
                 'temperature'     => 0.7,
+                'thinkingConfig'  => [
+                    'thinkingBudget' => 0,   // ← desactiva el razonamiento interno
+                ],
             ],
         ];
     }

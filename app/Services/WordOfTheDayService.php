@@ -16,8 +16,6 @@ class WordOfTheDayService
     {
         $cacheKey = "word_of_the_day_" . now()->toDateString();
 
-        Cache::forget($cacheKey);
-
         return Cache::remember($cacheKey, now()->endOfDay(), function () {
             
             $wordLevels = $this->loadWordLevels();

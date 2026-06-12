@@ -9,7 +9,7 @@ interface SidebarCtxType {
     toggle: () => void;
 }
 
-export const SidebarCtx = createContext<SidebarCtxType>({ open: true, toggle: () => {} });
+export const SidebarCtx = createContext<SidebarCtxType>({ open: true, toggle: () => { } });
 export const useSidebarCtx = () => useContext(SidebarCtx);
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -51,6 +51,10 @@ export default function AppSidebarLayout({
                         flexDirection: 'column',
                         overflow: 'hidden',
                         minWidth: 0,
+                        // --- Agrega estas 3 líneas ---
+                        backgroundColor: 'var(--bg)', // O 'white' / '#ffffff' si usas colores fijos
+                        position: 'relative',
+                        zIndex: 10,
                     }}
                 >
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
