@@ -61,6 +61,12 @@ class ListeningController extends Controller
         // 'lesson' si viene de la tarjeta de lección, 'free' si es práctica libre
         $source   = $request->query('from') === 'lesson' ? 'lesson' : 'free';
 
+        // Mejor score histórico del usuario en esta actividad
+        $bestScore = DB::table('listening_activity_user')
+            ->where('user_id', $user->id)
+            ->where('listening_activity_id', $activity->id)
+            ->max('score');
+
         // Clip de video: ver la escena y responder preguntas de comprensión
         if ($activity->type === 'clip') {
             $this->clips->ensureQuestionsForLevel($activity, $level);
@@ -71,6 +77,7 @@ class ListeningController extends Controller
                 'clip'       => $activity->buildClipForLevel($level),
                 'level'      => $level,
                 'source'     => $source,
+                'bestScore'  => $bestScore !== null ? (int) $bestScore : null,
             ]);
         }
 
@@ -83,6 +90,7 @@ class ListeningController extends Controller
             'song'       => $activity->buildSongForLevel($level),
             'level'      => $level,
             'source'     => $source,
+            'bestScore'  => $bestScore !== null ? (int) $bestScore : null,
         ]);
     }
 

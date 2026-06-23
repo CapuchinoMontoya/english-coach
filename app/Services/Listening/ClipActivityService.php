@@ -138,7 +138,8 @@ class ClipActivityService
 
                 $activity = ListeningActivity::create([
                     'type'             => 'clip',
-                    'title'            => $clip['scene_title'] ?? $video['title'],
+                    // El título base es el de YouTube; la IA lo limpia para que quede presentable
+                    'title'            => $this->cleanClipTitle($video['title'], $show),
                     'artist'           => $show,                  // para clips, artist = serie/película
                     'youtube_video_id' => $video['video_id'],
                     'duration'         => $video['duration'],
@@ -211,6 +212,30 @@ class ClipActivityService
 
         $byLevel[$level] = $valid;
         $activity->update(['questions_by_level' => $byLevel]);
+    }
+
+    // ── Limpiar el título de YouTube para que quede presentable ───────────────
+    private function cleanClipTitle(string $rawTitle, string $show): string
+    {
+        $system = "You clean raw YouTube video titles for a language-learning app. "
+            . "Given a raw title, return ONLY a short, clean scene title (max 7 words). "
+            . "Remove channel names, separators like '| Movieclips' or '- YouTube', "
+            . "tags like (HD)/(4K)/(Official Clip), episode codes, hashtags, emojis and clickbait. "
+            . "Keep it descriptive of the scene and in Title Case. "
+            . "Return JUST the plain title text — no quotes, no markdown, no explanation.";
+
+        try {
+            $raw = $this->ai->complete('activity', $system,
+                [['role' => 'user', 'content' => "Show/Movie: {$show}\nRaw title: {$rawTitle}"]], 40);
+        } catch (\Throwable) {
+            $raw = '';
+        }
+
+        // Sanitizar: una línea, sin comillas envolventes
+        $clean = trim(preg_replace('/\s+/', ' ', strtok($raw, "\n")));
+        $clean = trim($clean, " \t\"'");
+
+        return $clean !== '' ? mb_substr($clean, 0, 120) : $rawTitle;
     }
 
     private function extractJson(string $raw): array

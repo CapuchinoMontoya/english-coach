@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/app-layout'
+import axios from 'axios';
 import { type BreadcrumbItem } from '@/types'
 import { Head, router } from '@inertiajs/react'
+import VocabLessonContent, { type FocusWord } from './VocabLessonContent'
 import '../lessons.css'
 import './session.css'
 
@@ -21,6 +23,7 @@ interface Exercise {
 interface GeneratedSession {
     aspect: string
     grammar_points_covered: string[]
+    focus_words?: FocusWord[]
     is_consolidation: boolean
     warmup?: {
         intro: string
@@ -85,6 +88,8 @@ interface SessionPageProps {
         description: string
     }
     sessionState: SessionState
+    level?: string
+    passThreshold?: number
 }
 
 type Phase = 'loading' | 'warmup' | 'lesson' | 'practice' | 'production' | 'evaluating' | 'results'
@@ -112,10 +117,10 @@ function resolveStudentAnswer(ex: Exercise, raw: string | number | number[] | un
     if (raw === undefined || raw === null) return ''
     if (ex.type === 'word_order' && Array.isArray(raw)) {
         // Aseguramos que sea un arreglo, si es string lo dividimos por espacios
-        const words = Array.isArray(ex.question) 
-            ? ex.question 
+        const words = Array.isArray(ex.question)
+            ? ex.question
             : (typeof ex.question === 'string' ? ex.question.split(' ') : []);
-            
+
         return raw.map(i => words[i]).join(' ')
     }
     return raw as string | number
@@ -177,10 +182,10 @@ function ExerciseInput({
 
         case 'word_order': {
             // Protección: forzamos a que sea un arreglo para evitar que .map() explote
-            const words = Array.isArray(exercise.question) 
-                ? exercise.question 
+            const words = Array.isArray(exercise.question)
+                ? exercise.question
                 : (typeof exercise.question === 'string' ? exercise.question.split(' ') : []);
-                
+
             const selected: number[] = Array.isArray(answer) ? (answer as number[]) : []
             const usedSet = new Set(selected)
 
@@ -302,7 +307,9 @@ function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function SessionPage({ topic, sessionState }: SessionPageProps) {
+export default function SessionPage({ topic, sessionState, level = 'B1' }: SessionPageProps) {
+    // El botón de traductor solo se ofrece en A2 (A1 ya viene en español; B1+ se queda en inglés)
+    const canTranslate = level === 'A2'
     const [phase, setPhase] = useState<Phase>('loading')
     const [loadingMsg, setLoadingMsg] = useState('Alex is preparing your session...')
     const [session, setSession] = useState<GeneratedSession | null>(null)
@@ -316,6 +323,11 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
     const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
     const [result, setResult] = useState<SessionResult | null>(null)
 
+    const [lessonHtml, setLessonHtml] = useState<string>('')
+    const [isTranslating, setIsTranslating] = useState<boolean>(false)
+    const [isTraducido, setIsTraducido] = useState<boolean>(false)
+    const [translationsCache, setTranslationsCache] = useState<Record<string, string>>({})
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Lessons', href: '/lessons' },
@@ -324,6 +336,13 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
 
     // ── Generate session on mount ────────────────────────────────────────────
     useEffect(() => { generate() }, [])
+
+    useEffect(() => {
+        if (session?.mini_lesson?.html) {
+            setLessonHtml(session.mini_lesson.html)
+            setIsTraducido(false)
+        }
+    }, [session])
 
     async function generate() {
         setPhase('loading')
@@ -342,6 +361,50 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
             setPhase(data.session.warmup ? 'warmup' : 'lesson')
         } catch {
             setLoadingMsg('Connection error. Please refresh.')
+        }
+    }
+
+    async function handleTranslate() {
+        if (!session) return
+
+        // Si ya está traducido, volvemos al original (Gratis, en memoria)
+        if (isTraducido) {
+            setLessonHtml(session.mini_lesson.html)
+            setIsTraducido(false)
+            return
+        }
+
+        const originalHtml = session.mini_lesson.html
+
+        // 🧠 CLAVE FRONTEND: ¿Ya tradujimos este texto exacto en esta sesión?
+        if (translationsCache[originalHtml]) {
+            setLessonHtml(translationsCache[originalHtml]) // Lo recuperamos al instante
+            setIsTraducido(true)
+            return // 🛑 Detener aquí. No toca la red, costo $0.
+        }
+
+        setIsTranslating(true)
+        try {
+            const respuesta = await axios.post('/traducir', {
+                texto: originalHtml,
+                idioma_destino: 'es' 
+            })
+            
+            const textoTraducido = respuesta.data.traducido
+
+            // 💾 Guardamos en la caché de React antes de pintar
+            setTranslationsCache(prev => ({
+                ...prev,
+                [originalHtml]: textoTraducido
+            }))
+
+            setLessonHtml(textoTraducido)
+            setIsTraducido(true)
+        } catch (error) {
+            console.error("Error al traducir:", error)
+            alert("No se pudo traducir la lección en este momento.")
+        } finally {
+            setIsTranslating(false)
         }
     }
 
@@ -370,6 +433,7 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
                 prompt: session.free_production.prompt,
                 text: productionText,
             },
+            focus_words: session.focus_words ?? [],
         }
 
         try {
@@ -481,16 +545,49 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
                 )}
 
                 {/* ── MINI-LESSON ── */}
+                {/* ── MINI-LESSON ── */}
                 {phase === 'lesson' && session && (
                     <>
-                        <div
-                            className="theory-content"
-                            dangerouslySetInnerHTML={{ __html: session.mini_lesson.html }}
-                        />
-                        <div className="lesson-actions">
-                            <button className="btn-lesson-primary" onClick={() => setPhase('practice')}>
-                                I'm ready to practice →
-                            </button>
+                        <div className="card">
+                            <div className="card-body">
+
+                                {/* Botón de traducción — solo nivel A2 */}
+                                {canTranslate && (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                                    <button
+                                        onClick={handleTranslate}
+                                        disabled={isTranslating}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '0.5rem',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '600',
+                                            cursor: isTranslating ? 'not-allowed' : 'pointer',
+                                            backgroundColor: isTranslating ? '#f3f4f6' : (isTraducido ? '#dcfce7' : '#eff6ff'),
+                                            color: isTranslating ? '#9ca3af' : (isTraducido ? '#15803d' : '#2563eb'),
+                                            border: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem'
+                                        }}
+                                    >
+                                        <span>🌐</span>
+                                        {isTranslating ? 'Traduciendo...' : isTraducido ? 'Ver Original (EN)' : 'Traducir al Español'}
+                                    </button>
+                                </div>
+                                )}
+
+                                {/* Se reemplaza session.mini_lesson.html por lessonHtml */}
+                                <VocabLessonContent
+                                    html={lessonHtml || session.mini_lesson.html}
+                                    words={session.focus_words ?? []}
+                                />
+                                <div className="lesson-actions">
+                                    <button className="btn-lesson-primary" onClick={() => setPhase('practice')}>
+                                        I'm ready to practice →
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </>
                 )}
@@ -575,7 +672,7 @@ export default function SessionPage({ topic, sessionState }: SessionPageProps) {
                     <>
                         {/* Mastery banner */}
                         <div className={`mastery-banner ${result.next_step === 'topic_completed' ? 'completed' :
-                                result.next_step === 'needs_consolidation' ? 'consolidation' : 'next'
+                            result.next_step === 'needs_consolidation' ? 'consolidation' : 'next'
                             }`}>
                             <div className="mastery-emoji">
                                 {result.next_step === 'topic_completed' ? '🎉' :

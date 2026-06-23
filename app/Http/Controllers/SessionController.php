@@ -13,6 +13,8 @@ use App\Services\AI\AIProviderService;
 use App\Services\AI\SessionOrchestratorService;
 use App\Services\Listening\ClipActivityService;
 use App\Services\Listening\ListeningActivityService;
+use App\Services\Vocabulary\VerbStudyService;
+use App\Services\Vocabulary\VocabularyStudyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +29,8 @@ class SessionController extends Controller
         private SessionOrchestratorService $orchestrator,
         private ListeningActivityService   $listening,
         private ClipActivityService        $clips,
+        private VocabularyStudyService $vocab,
+        private VerbStudyService       $verbs,
     ) {}
 
     // ── Página de la sesión ───────────────────────────────────────────────────
@@ -59,6 +63,9 @@ class SessionController extends Controller
                 'sessions_done'     => $state['sessions_done'],
                 'min_sessions_met'  => $state['min_sessions_met'],
             ],
+            // Nivel del estudiante: controla idioma de la lección y el botón de traductor
+            'level'         => $user->learningProfile->real_level ?? 'B1',
+            'passThreshold' => $this->orchestrator->passThreshold($user->learningProfile->real_level ?? 'B1'),
         ]);
     }
 
@@ -93,24 +100,52 @@ class SessionController extends Controller
         // ── 2. No hay reutilizable → generar nueva ──
         $state = $this->orchestrator->getSessionState($user, $topic);
 
+        $focusWords = $this->vocab->focusWordsForTopic($user, $topic);
+        $focusVerbs = $this->verbs->focusVerbsForLesson($user);
+
         $systemPrompt = $this->context->buildSystemPrompt(
             $user,
             'lesson_session',
             $topic,
-            ['sessionState' => $state]
+            ['sessionState' => $state, 'focusWords' => $focusWords, 'focusVerbs' => $focusVerbs]
         );
 
-        $raw = $this->ai->complete(
-            'lesson',
-            $systemPrompt,
-            [['role' => 'user', 'content' => "Generate today's session now."]],
-            4000
-        );
+        // Genera y sanea; reintenta una vez si la práctica queda con muy pocos
+        // ejercicios válidos tras descartar los que vienen rotos.
+        $session = null;
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $raw       = $this->ai->complete(
+                'lesson',
+                $systemPrompt,
+                [['role' => 'user', 'content' => "Generate today's session now."]],
+                4000
+            );
+            $candidate = $this->extractJson($raw);
 
-        $session = $this->extractJson($raw);
+            if (! $candidate || ! isset($candidate['mini_lesson'])) {
+                continue;
+            }
 
-        if (! $session || ! isset($session['mini_lesson'])) {
+            $candidate = $this->sanitizeSession($candidate);
+            $session   = $candidate;
+
+            // Suficientes ejercicios buenos → no hace falta reintentar
+            if (count($candidate['practice']['exercises'] ?? []) >= 3) {
+                break;
+            }
+        }
+
+        // Debe existir mini-lección y al menos un ejercicio de práctica respondible
+        if (! $session || ! isset($session['mini_lesson']) || empty($session['practice']['exercises'])) {
             return response()->json(['error' => 'generation_failed'], 422);
+        }
+
+        $session['focus_words'] = $focusWords;
+        $session['focus_verbs'] = $focusVerbs;
+
+        // Los verbos foco entran al ciclo de repaso (aprender, no memorizar)
+        if (! empty($focusVerbs)) {
+            $this->verbs->introduceFocusVerbs($user, array_column($focusVerbs, 'verb'));
         }
 
         $learningSession = LearningSession::create([
@@ -152,7 +187,7 @@ class SessionController extends Controller
             $user,
             'session_evaluate',
             $topic,
-            ['sessionState' => $state]
+            ['sessionState' => $state, 'focusWords' => $submission['focus_words'] ?? []]
         );
 
         $raw = $this->ai->complete(
@@ -169,6 +204,20 @@ class SessionController extends Controller
         }
 
         $score = (int) $evaluation['session_score'];
+
+        $focusWords = collect($submission['focus_words'] ?? []);
+        $allWords   = $focusWords->pluck('word')->filter()->values()->all();
+        if (! empty($allWords)) {
+            $this->vocab->introduceFocusWords($user, $allWords);
+ 
+            $usedWords = array_values(array_intersect(
+                $evaluation['vocabulary_used'] ?? [],
+                $allWords
+            ));
+            if (! empty($usedWords)) {
+                $this->vocab->markFocusWordsUsed($user, $usedWords);
+            }
+        }
 
         // 2. Guardar el score en la LearningSession
         LearningSession::query()
@@ -267,6 +316,155 @@ class SessionController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Sanea los ejercicios generados: descarta los que no se pueden responder
+     * y oculta la respuesta cuando la IA la dejó visible.
+     */
+    private function sanitizeSession(array $session): array
+    {
+        foreach (['warmup', 'practice'] as $section) {
+            if (! isset($session[$section]['exercises']) || ! is_array($session[$section]['exercises'])) {
+                continue;
+            }
+
+            $clean = [];
+            foreach ($session[$section]['exercises'] as $ex) {
+                if (! is_array($ex)) continue;
+                $fixed = $this->sanitizeExercise($ex);
+                if ($fixed !== null) $clean[] = $fixed;
+            }
+
+            $session[$section]['exercises'] = array_values($clean);
+        }
+
+        return $session;
+    }
+
+    /**
+     * Valida/repara un ejercicio. Devuelve el ejercicio corregido o null si es
+     * imposible de salvar (sin respuesta, sin hueco, opciones inválidas, etc.).
+     */
+    private function sanitizeExercise(array $ex): ?array
+    {
+        $type = $ex['type'] ?? null;
+
+        switch ($type) {
+            case 'fill_blank': {
+                $answer   = is_string($ex['answer'] ?? null)   ? trim($ex['answer'])   : '';
+                $question = is_string($ex['question'] ?? null) ? trim($ex['question']) : '';
+                if ($answer === '' || $question === '') return null;
+
+                // Quita un hint entre paréntesis que revele la respuesta: "(went)"
+                $question = trim(preg_replace(
+                    '/\s*\(\s*' . preg_quote($answer, '/') . '\s*\)/iu',
+                    '',
+                    $question
+                ));
+
+                $hasBlank = (bool) preg_match('/_{2,}/u', $question);
+                if (! $hasBlank) {
+                    // Convierte la respuesta visible en un hueco; si no aparece, es inservible
+                    $pattern = '/\b' . preg_quote($answer, '/') . '\b/iu';
+                    if (preg_match($pattern, $question)) {
+                        $question = preg_replace($pattern, '_____', $question, 1);
+                    } else {
+                        return null;
+                    }
+                }
+
+                $ex['question'] = $question;
+                $ex['answer']   = $answer;
+                $ex['options']  = null;
+                return $ex;
+            }
+
+            case 'multiple_choice': {
+                $options = $ex['options'] ?? null;
+                if (! is_array($options)) return null;
+
+                $options = array_values(array_filter(
+                    array_map(fn ($o) => is_string($o) ? trim($o) : $o, $options),
+                    fn ($o) => $o !== '' && $o !== null
+                ));
+                if (count($options) < 2) return null;
+
+                $answer = $ex['answer'] ?? null;
+
+                // Si la respuesta vino como texto, conviértela a índice (exacto o laxo)
+                if (is_string($answer)) {
+                    $idx = array_search(trim($answer), array_map('strval', $options), true);
+                    if ($idx === false) {
+                        foreach ($options as $i => $o) {
+                            if (is_string($o) && mb_strtolower(trim($o)) === mb_strtolower(trim($answer))) {
+                                $idx = $i;
+                                break;
+                            }
+                        }
+                    }
+                    $answer = $idx === false ? null : $idx;
+                }
+
+                if (! is_int($answer) || $answer < 0 || $answer >= count($options)) return null;
+                if (! is_string($ex['question'] ?? null) || trim($ex['question']) === '') return null;
+
+                $ex['options'] = $options;
+                $ex['answer']  = $answer;
+                return $ex;
+            }
+
+            case 'error_correction':
+            case 'translation_es_to_en': {
+                $answer   = is_string($ex['answer'] ?? null)   ? trim($ex['answer'])   : '';
+                $question = is_string($ex['question'] ?? null) ? trim($ex['question']) : '';
+                if ($answer === '' || $question === '') return null;
+
+                // En corrección de errores la frase con error no puede ser idéntica a la corregida
+                if ($type === 'error_correction' && mb_strtolower($question) === mb_strtolower($answer)) {
+                    return null;
+                }
+
+                $ex['answer']   = $answer;
+                $ex['question'] = $question;
+                $ex['options']  = null;
+                return $ex;
+            }
+
+            case 'word_order': {
+                $q     = $ex['question'] ?? null;
+                $words = is_array($q)
+                    ? $q
+                    : (is_string($q) ? preg_split('/[\s\/]+/u', $q) : []);
+                $words = array_values(array_filter(
+                    array_map(fn ($w) => is_string($w) ? trim($w) : '', $words),
+                    fn ($w) => $w !== ''
+                ));
+
+                $answer = is_string($ex['answer'] ?? null) ? trim($ex['answer']) : '';
+                if (count($words) < 2 || $answer === '') return null;
+
+                // Las palabras revueltas deben reconstruir EXACTAMENTE la respuesta
+                $norm = fn ($s) => mb_strtolower(trim(preg_replace('/[^\p{L}\p{N}\s]/u', '', $s)));
+
+                $answerWords = array_values(array_filter(
+                    explode(' ', preg_replace('/\s+/', ' ', $norm($answer)))
+                ));
+                $questionWords = array_map($norm, $words);
+
+                sort($answerWords);
+                sort($questionWords);
+                if ($answerWords !== $questionWords) return null;
+
+                $ex['question'] = $words;
+                $ex['answer']   = $answer;
+                $ex['options']  = null;
+                return $ex;
+            }
+
+            default:
+                return null; // tipo desconocido → fuera
+        }
     }
 
     /**

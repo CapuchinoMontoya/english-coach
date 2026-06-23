@@ -8,25 +8,25 @@
     flex-wrap: wrap;
     margin-bottom: 20px;
     padding: 12px 18px;
-    background: var(--bg-sunken);
-    border: 1px solid var(--line);
+    background: #FFF8F5;
+    border: 1px solid #FFE0D0;
     border-radius: 10px;
 }
 
 .session-meta-item {
     font-size: 12px;
-    color: var(--ink-muted);
+    color: #A08070;
 }
 
 .session-meta-item strong {
-    color: var(--primary);
+    color: #6B3F1F;
     font-weight: 500;
 }
 
 /* Intro de cada fase */
 .phase-intro {
     font-size: 14px;
-    color: var(--ink-muted);
+    color: #A08070;
     margin-bottom: 16px;
     line-height: 1.6;
 }
@@ -38,8 +38,8 @@
     gap: 8px;
     font-size: 12px;
     font-weight: 500;
-    color: var(--warning);
-    background: var(--warning-soft);
+    color: #F57F17;
+    background: #FFF8E1;
     padding: 9px 14px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -47,8 +47,8 @@
 
 /* Free production */
 .production-prompt-box {
-    background: var(--info-soft);
-    border: 1px solid var(--line-strong);
+    background: #F0F9FF;
+    border: 1px solid #B3D9F5;
     border-radius: 12px;
     padding: 18px 20px;
     margin-bottom: 16px;
@@ -59,13 +59,13 @@
     font-weight: 500;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--info);
+    color: #0277BD;
     margin-bottom: 8px;
 }
 
 .production-prompt-text {
     font-size: 15px;
-    color: var(--ink);
+    color: #1C1107;
     line-height: 1.6;
     margin-bottom: 12px;
 }
@@ -80,37 +80,37 @@
     font-size: 11px;
     padding: 2px 9px;
     border-radius: 4px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--line-strong);
-    color: var(--info);
+    background: #fff;
+    border: 1px solid #B3D9F5;
+    color: #0277BD;
 }
 
 .production-textarea {
     width: 100%;
     min-height: 150px;
     padding: 14px 16px;
-    border: 1px solid var(--line);
+    border: 1px solid #E8DDD4;
     border-radius: 10px;
     font-size: 14px;
     font-family: 'DM Sans', sans-serif;
     line-height: 1.7;
-    color: var(--ink);
-    background: var(--bg-elevated);
+    color: #2D1B10;
+    background: #fff;
     outline: none;
     resize: vertical;
     transition: border-color .15s;
 }
 
-.production-textarea:focus { border-color: var(--ink-muted); }
+.production-textarea:focus { border-color: #A08070; }
 
 .word-count {
     font-size: 12px;
-    color: var(--ink-muted);
+    color: #A08070;
     text-align: right;
     margin-top: 6px;
 }
 
-.word-count.met { color: var(--success); font-weight: 500; }
+.word-count.met { color: #2E7D32; font-weight: 500; }
 
 /* Mastery result banner */
 .mastery-banner {
@@ -120,9 +120,9 @@
     margin-bottom: 20px;
 }
 
-.mastery-banner.completed     { background: var(--success-soft); border: 1px solid var(--success);    }
-.mastery-banner.consolidation { background: var(--warning-soft); border: 1px solid var(--warning);    }
-.mastery-banner.next          { background: var(--info-soft);    border: 1px solid var(--line-strong); }
+.mastery-banner.completed     { background: #F1F8E9; border: 1px solid #A5D6A7; }
+.mastery-banner.consolidation { background: #FFF8E1; border: 1px solid #FFE082; }
+.mastery-banner.next          { background: #F0F9FF; border: 1px solid #B3D9F5; }
 
 .mastery-emoji { font-size: 46px; margin-bottom: 8px; line-height: 1; }
 
@@ -130,12 +130,12 @@
     font-family: 'Cormorant Garamond', serif;
     font-size: 25px;
     margin-bottom: 6px;
-    color: var(--ink);
+    color: #1C1107;
 }
 
 .mastery-msg {
     font-size: 14px;
-    color: var(--ink-muted);
+    color: #5D3A1A;
     line-height: 1.6;
     max-width: 460px;
     margin: 0 auto;
@@ -153,23 +153,23 @@
 .score-chip {
     text-align: center;
     padding: 10px 20px;
-    background: var(--bg-elevated);
+    background: #fff;
     border-radius: 10px;
-    border: 1px solid var(--line);
+    border: 1px solid #E8DDD4;
     min-width: 90px;
 }
 
 .score-chip-num {
     font-size: 24px;
     font-weight: 500;
-    color: var(--primary);
+    color: #6B3F1F;
     font-family: 'Cormorant Garamond', serif;
     line-height: 1.1;
 }
 
 .score-chip-label {
     font-size: 9.5px;
-    color: var(--ink-muted);
+    color: #A08070;
     text-transform: uppercase;
     letter-spacing: .06em;
     margin-top: 2px;
@@ -177,8 +177,8 @@
 
 /* Production feedback box in results */
 .production-fb-box {
-    background: var(--bg-sunken);
-    border: 1px solid var(--line);
+    background: #FFF8F5;
+    border: 1px solid #FFE0D0;
     border-radius: 10px;
     padding: 14px 18px;
     margin-bottom: 20px;
@@ -189,13 +189,13 @@
     font-weight: 500;
     letter-spacing: .07em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: #C4622D;
     margin-bottom: 6px;
 }
 
 .production-fb-text {
     font-size: 13px;
-    color: var(--ink-muted);
+    color: #5D3A1A;
     line-height: 1.6;
 }
 
@@ -207,8 +207,8 @@
     gap: 16px;
     padding: 18px 20px;
     margin-bottom: 20px;
-    background: linear-gradient(135deg, var(--bg-sunken) 0%, var(--info-soft) 100%);
-    border: 1px solid var(--line-strong);
+    background: linear-gradient(135deg, #FFF8F5 0%, #F0F9FF 100%);
+    border: 1px solid #B3D9F5;
     border-radius: 14px;
     animation: la-pop .3s ease;
 }
@@ -222,7 +222,7 @@
     font-weight: 500;
     letter-spacing: .07em;
     text-transform: uppercase;
-    color: var(--info);
+    color: #0277BD;
     margin-bottom: 4px;
 }
 
@@ -230,13 +230,13 @@
     font-family: 'Cormorant Garamond', serif;
     font-size: 19px;
     font-style: italic;
-    color: var(--ink);
+    color: #1C1107;
     line-height: 1.1;
 }
 
 .listening-suggest-artist {
     font-size: 13px;
-    color: var(--ink-muted);
+    color: #A08070;
     margin-top: 1px;
 }
 
@@ -244,3 +244,91 @@
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PALABRAS FOCO — subrayado + tooltip de significado
+   ════════════════════════════════════════════════════════════════════════════ */
+.vocab-word {
+    border-bottom: 2px dotted #C4622D;
+    cursor: help;
+    color: #6B3F1F;
+    font-weight: 500;
+    transition: background .12s;
+    border-radius: 2px;
+}
+.vocab-word:hover { background: #FBEEE4; }
+
+.vocab-tip {
+    z-index: 1000;
+    width: 248px;
+    background: #2A1A0E;
+    color: #fff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.28);
+    pointer-events: auto;
+    animation: vocab-tip-in .12s ease;
+}
+@keyframes vocab-tip-in { from { opacity: 0; transform: translate(-50%, -100%) translateY(4px); } }
+.vocab-tip::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -6px; transform: translateX(-50%);
+    width: 12px; height: 12px; background: #2A1A0E;
+    rotate: 45deg; border-radius: 2px;
+}
+.vocab-tip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vocab-tip-word { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; }
+.vocab-tip-audio {
+    width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0;
+    background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.vocab-tip-audio:hover { background: rgba(255,255,255,.26); }
+.vocab-tip-phon { font-size: 12.5px; color: #C9A98F; font-style: italic; margin-top: 1px; }
+.vocab-tip-tr   { font-size: 14.5px; color: #F3E8DF; margin-top: 7px; }
+.vocab-tip-tr em { color: #C9A98F; font-style: italic; font-size: 12px; }
+.vocab-tip-ex   { font-size: 12.5px; color: #BBA08C; font-style: italic; margin-top: 7px; line-height: 1.45; border-top: 1px solid rgba(255,255,255,.12); padding-top: 7px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CONTENIDO DE LA MINI-LECCIÓN — estilizado del HTML que devuelve la IA
+   ════════════════════════════════════════════════════════════════════════════ */
+.lesson-content { color: #2A1E14; font-size: 16px; line-height: 1.72; }
+
+.lesson-content h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 600; font-style: italic;
+    font-size: 31px; color: #6B3F1F; line-height: 1.15; margin: 2px 0 18px;
+}
+.lesson-content h2 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 600;
+    font-size: 24px; color: #6B3F1F; margin: 30px 0 12px;
+    padding-bottom: 7px; border-bottom: 1px solid #ECE0D5;
+}
+.lesson-content h3 { font-size: 16px; font-weight: 700; color: #1C1107; margin: 22px 0 8px; letter-spacing: -.01em; }
+.lesson-content p { margin: 12px 0; }
+.lesson-content strong { color: #C4622D; font-weight: 600; }
+.lesson-content em { color: #8A6B55; }
+
+.lesson-content ul, .lesson-content ol { margin: 12px 0; padding-left: 2px; list-style: none; }
+.lesson-content li { position: relative; padding-left: 22px; margin: 7px 0; }
+.lesson-content ul li::before { content: ''; position: absolute; left: 4px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: #C4622D; }
+.lesson-content ol { counter-reset: li; }
+.lesson-content ol li { counter-increment: li; }
+.lesson-content ol li::before { content: counter(li); position: absolute; left: 0; top: 0; color: #C4622D; font-weight: 700; font-size: 13px; }
+
+.lesson-content table {
+    width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0;
+    font-size: 14.5px; border: 1px solid #E8DDD4; border-radius: 12px; overflow: hidden;
+}
+.lesson-content th { background: #F6EEE6; color: #6B3F1F; font-weight: 600; text-align: left; padding: 11px 14px; border-bottom: 1px solid #E8DDD4; }
+.lesson-content td { padding: 11px 14px; border-bottom: 1px solid #F0E7DE; vertical-align: top; }
+.lesson-content tr:last-child td { border-bottom: none; }
+.lesson-content td + td, .lesson-content th + th { border-left: 1px solid #F0E7DE; }
+
+.lesson-content .key-points {
+    background: #FBF3EC; border: 1px solid #EAD9C9; border-left: 4px solid #C4622D;
+    border-radius: 12px; padding: 16px 20px; margin: 22px 0;
+}
+.lesson-content .key-points h3 { margin-top: 0; color: #6B3F1F; }
+
+.lesson-content code { background: #F2E8DF; padding: 1px 6px; border-radius: 5px; font-size: .9em; color: #8A4B22; }
+.lesson-content blockquote { border-left: 3px solid #E3B79B; margin: 16px 0; padding: 4px 16px; color: #6B5446; font-style: italic; }

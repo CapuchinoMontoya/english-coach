@@ -16,7 +16,7 @@ class ClaudeProvider implements AIProvider
     public function complete(string $systemPrompt, array $messages, int $maxTokens = 1024): string
     {
         $response = Http::withHeaders($this->headers())
-            ->timeout(60)
+            ->timeout(120)
             ->post('https://api.anthropic.com/v1/messages', [
                 'model'      => $this->model,
                 'max_tokens' => $maxTokens,
@@ -34,7 +34,7 @@ class ClaudeProvider implements AIProvider
     public function stream(string $systemPrompt, array $messages, int $maxTokens = 1024): \Generator
     {
         $response = Http::withHeaders($this->headers())
-            ->withOptions(['stream' => true, 'read_timeout' => 60])
+            ->withOptions(['stream' => true, 'read_timeout' => 120])
             ->post('https://api.anthropic.com/v1/messages', [
                 'model'      => $this->model,
                 'max_tokens' => $maxTokens,

@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     Library,
     LogOut,
+    Repeat,
     Settings,
     Sparkles,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ const navGroups: NavGroup[] = [
         items: [
             { title: 'Lessons', url: '/lessons', icon: BookOpen },
             { title: 'Vocabulary', url: '/vocabulary', icon: Library },
+            { title: 'Verbs', url: '/verbs', icon: Repeat },
             { title: 'Grammar', url: '/grammar', icon: Sparkles },
         ],
     },

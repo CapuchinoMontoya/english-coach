@@ -12,14 +12,15 @@ interface PlayProps {
         youtube_video_id: string
         lines:            any[]
     }
-    level:  string
-    source: 'lesson' | 'free'
+    level:      string
+    source:     'lesson' | 'free'
+    bestScore?: number | null
 }
 
 const csrf = () =>
     document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
 
-export default function Play({ activityId, song, level, source }: PlayProps) {
+export default function Play({ activityId, song, level, source, bestScore = null }: PlayProps) {
     const [done, setDone] = useState(false)
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -55,6 +56,7 @@ export default function Play({ activityId, song, level, source }: PlayProps) {
                 song={song as any}
                 rewindSecs={4}
                 graceSecs={0.5}
+                bestScore={bestScore}
                 onComplete={handleComplete}
             />
 

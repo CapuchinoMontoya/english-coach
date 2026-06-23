@@ -23,7 +23,8 @@ class DashboardController extends Controller
         'C1' => 'C2',
     ];
 
-    public function __construct(private AIProviderService $ai, protected WordOfTheDayService $wordService) {
+    public function __construct(private AIProviderService $ai, protected WordOfTheDayService $wordService)
+    {
         $this->wordService = $wordService;
     }
 
@@ -83,35 +84,44 @@ class DashboardController extends Controller
 
     private function calculateStreak($user): int
     {
+        // 1. Obtenemos las fechas crudas
         // whereRaw evita el falso positivo de Intelephense con whereNotNull
-        $dates = LearningSession::query()
+        $rawDates = LearningSession::query()
             ->where('user_id', $user->id)
             ->where('mode', '!=', 'placement')
             ->whereRaw('score IS NOT NULL', [], 'and')
             ->selectRaw('DATE(created_at) as session_date')
-            ->distinct()
             ->orderByDesc('session_date')
-            ->pluck('session_date');
+            ->pluck('session_date')
+            ->toArray();
 
-        if ($dates->isEmpty()) return 0;
+        // 2. Eliminamos duplicados y aseguramos que los índices sean [0, 1, 2...]
+        $dates = array_values(array_unique($rawDates));
+
+        if (empty($dates)) {
+            return 0;
+        }
 
         $today     = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
 
         // Si la última sesión no fue hoy ni ayer, la racha se rompió
-        if ($dates->first() !== $today && $dates->first() !== $yesterday) {
+        if ($dates[0] !== $today && $dates[0] !== $yesterday) {
             return 0;
         }
 
-        $streak   = 0;
-        $expected = $dates->first();
+        $streak = 1; // Ya sabemos que jugó hoy o ayer, así que la racha mínima es 1
 
-        foreach ($dates as $date) {
-            if ($date === $expected) {
+        // 3. Comprobamos la continuidad hacia atrás
+        for ($i = 0; $i < count($dates) - 1; $i++) {
+            // Calculamos exactamente qué fecha debería ser la anterior
+            $expectedDate = \Carbon\Carbon::parse($dates[$i])->subDay()->toDateString();
+
+            // Si la siguiente fecha en el arreglo coincide con lo esperado, sumamos
+            if ($dates[$i + 1] === $expectedDate) {
                 $streak++;
-                $expected = Carbon::parse($expected)->subDay()->toDateString();
             } else {
-                break;
+                break; // Se rompió la continuidad
             }
         }
 

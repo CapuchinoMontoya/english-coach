@@ -1,0 +1,189 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   VOCABULARY — índice de temas + sesión de estudio (Capuchino)
+   Usa los design tokens de tokens.css → compatible con modo oscuro.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.vb {
+    font-family: var(--font-sans), 'DM Sans', sans-serif;
+    max-width: 1200px; /* <- Aumentado para dar espacio a 4 tarjetas */
+    margin: 0 auto;
+    padding: 26px 18px 60px;
+}
+
+.vb-head { margin-bottom: 24px; }
+.vb-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 34px;
+    color: var(--primary);
+    line-height: 1.1;
+}
+.vb-sub { font-size: 13.5px; color: var(--ink-muted); margin-top: 4px; }
+
+/* ── CTAs ── */
+.vb-ctas { display: flex; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
+.vb-cta {
+    flex: 1; min-width: 220px; display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px; border-radius: 16px; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--line); background: var(--bg-elevated); box-shadow: var(--shadow-sm);
+    transition: transform .12s, box-shadow .15s;
+}
+.vb-cta:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.vb-cta.primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-active) 100%);
+    border-color: transparent;
+}
+.vb-cta-ic { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.vb-cta.primary .vb-cta-ic { background: rgba(255,255,255,.16); color: var(--on-primary); }
+.vb-cta-ic.review { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--line); }
+.vb-cta-tt { font-size: 15px; font-weight: 600; color: var(--ink); }
+.vb-cta.primary .vb-cta-tt { color: var(--on-primary); }
+.vb-cta-ds { font-size: 12.5px; color: var(--ink-muted); margin-top: 1px; }
+.vb-cta.primary .vb-cta-ds { color: rgba(255,255,255,.72); }
+
+/* ── Temas por nivel ── */
+.vb-level { margin-bottom: 26px; }
+.vb-level-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 10px;
+}
+.vb-themes { 
+    display: grid; 
+    /* Crea columnas dinámicamente. Mínimo 250px de ancho por tarjeta. */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+    gap: 16px; /* Aumenté un poco el gap para que respiren mejor a 4 columnas */
+}
+.vb-theme {
+    background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px; cursor: pointer; text-decoration: none; display: block;
+    box-shadow: var(--shadow-sm); transition: transform .12s, box-shadow .15s, border-color .12s;
+}
+.vb-theme:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--line-strong); }
+.vb-theme-name { font-size: 14.5px; font-weight: 600; color: var(--ink); text-transform: capitalize; line-height: 1.25; margin-bottom: 12px; }
+.vb-bar { height: 7px; border-radius: 4px; background: var(--bg-sunken); overflow: hidden; display: flex; }
+.vb-bar-mastered { background: var(--accent); height: 100%; }
+.vb-bar-learning { background: var(--accent-soft); height: 100%; }
+.vb-counts { display: flex; gap: 12px; margin-top: 9px; font-size: 11.5px; color: var(--ink-muted); }
+.vb-counts b { color: var(--primary); font-weight: 600; }
+.vb-done-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--success); font-weight: 600; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SESIÓN DE ESTUDIO
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.vb-study { max-width: 580px; margin: 0 auto; padding: 20px 18px 60px; min-height: 70vh; display: flex; flex-direction: column; }
+.vb-top { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.vb-close { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-elevated); color: var(--ink-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; flex-shrink: 0; transition: background .12s, color .12s; }
+.vb-close:hover { background: var(--bg-sunken); color: var(--primary); }
+.vb-progress { flex: 1; height: 8px; border-radius: 4px; background: var(--bg-sunken); overflow: hidden; }
+.vb-progress-fill { height: 100%; background: var(--accent); transition: width .3s ease; }
+.vb-counter { font-size: 12.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+.vb-card {
+    background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 20px;
+    padding: 32px 28px; box-shadow: var(--shadow-sm); flex: 1;
+    display: flex; flex-direction: column; animation: vb-in .25s ease;
+}
+@keyframes vb-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.vb-new-tag { align-self: flex-start; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); padding: 3px 10px; border-radius: 20px; margin-bottom: 16px; }
+
+.vb-word { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 600; color: var(--primary); line-height: 1.05; }
+.vb-word-row { display: flex; align-items: center; gap: 12px; }
+.vb-phonetic { font-size: 15px; color: var(--ink-muted); font-style: italic; margin-top: 4px; }
+.vb-pos { font-size: 12px; color: var(--ink-muted); margin-top: 6px; font-style: italic; }
+.vb-speak { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-sunken); color: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .12s; }
+.vb-speak:hover { background: var(--primary-soft); }
+
+.vb-divider { height: 1px; background: var(--line); margin: 20px 0; }
+.vb-translation { font-size: 24px; font-weight: 500; color: var(--ink); }
+.vb-example { font-size: 15px; color: var(--ink); font-style: italic; line-height: 1.5; margin-top: 16px; }
+.vb-example-tr { font-size: 13.5px; color: var(--ink-muted); margin-top: 4px; }
+
+.vb-prompt-label { font-size: 12.5px; color: var(--ink-muted); margin-bottom: 14px; }
+.vb-cloze-sentence { font-size: 19px; color: var(--ink); line-height: 1.6; margin-bottom: 20px; }
+.vb-cloze-sentence b { color: var(--accent); letter-spacing: 1px; }
+
+.vb-options { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.vb-option {
+    text-align: left; padding: 14px 18px; border-radius: 12px; cursor: pointer;
+    border: 1.5px solid var(--line); background: var(--bg-elevated); font-size: 15px; color: var(--ink);
+    font-family: inherit; transition: border-color .12s, background .12s;
+}
+.vb-option:hover:not(:disabled) { border-color: var(--accent); background: var(--bg-sunken); }
+.vb-option:disabled { cursor: default; }
+.vb-option.correct { border-color: var(--success); background: var(--success-soft); color: var(--success); font-weight: 600; }
+.vb-option.wrong { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+
+.vb-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px; font-size: 17px; font-family: inherit; color: var(--ink); background: var(--bg-elevated); outline: none; transition: border-color .15s, box-shadow .15s; }
+.vb-input:focus { border-color: var(--accent); box-shadow: var(--ring); }
+
+.vb-actions { margin-top: 22px; }
+.vb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; transition: background .15s, opacity .15s; }
+.vb-btn-primary { background: var(--primary); color: var(--on-primary); }
+.vb-btn-primary:hover { background: var(--primary-hover); }
+.vb-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Modo pronunciación ── */
+.vb-speak-prompt {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 30px; font-weight: 600; color: var(--ink); text-align: center; margin-top: 4px;
+}
+.vb-mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; margin: 36px 0 8px; }
+.vb-mic {
+    width: 88px; height: 88px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .15s, background .15s, color .15s, box-shadow .15s;
+}
+.vb-mic:hover:not(:disabled) { transform: scale(1.05); }
+.vb-mic:disabled { cursor: default; }
+.vb-mic.listening {
+    background: var(--danger-soft); color: var(--danger);
+    animation: vb-pulse 1.3s ease-out infinite;
+}
+@keyframes vb-pulse {
+    0%   { box-shadow: 0 0 0 0 var(--danger-soft); }
+    70%  { box-shadow: 0 0 0 18px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+.vb-mic-status { font-size: 15px; color: var(--ink-muted); min-height: 22px; text-align: center; }
+.vb-mic-status b { color: var(--ink); }
+.vb-mic-live { color: var(--danger); font-weight: 600; }
+.vb-mic-retry { font-size: 13px; color: var(--danger); font-weight: 600; text-align: center; }
+.vb-mic-skip {
+    margin-top: 4px; padding: 9px 18px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--ink-muted);
+    font-family: inherit; font-size: 13px; font-weight: 500; transition: background .12s;
+}
+.vb-mic-skip:hover { background: var(--bg-sunken); color: var(--ink); }
+.vb-mic-unsupported { font-size: 13px; color: var(--ink-muted); text-align: center; margin: 20px 0 14px; line-height: 1.5; }
+
+/* ── Feedback ── */
+.vb-feedback { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; justify-content: center; }
+.vb-fb-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.vb-fb-icon.ok { background: var(--success-soft); color: var(--success); }
+.vb-fb-icon.no { background: var(--danger-soft); color: var(--danger); }
+.vb-fb-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 26px; margin-bottom: 14px; }
+.vb-fb-title.ok { color: var(--success); }
+.vb-fb-title.no { color: var(--danger); }
+.vb-fb-answer { font-size: 22px; font-weight: 600; color: var(--primary); }
+.vb-fb-answer small { font-size: 16px; font-weight: 400; color: var(--ink-muted); }
+.vb-fb-example { font-size: 14px; color: var(--ink); font-style: italic; margin-top: 14px; line-height: 1.5; max-width: 380px; }
+
+/* ── Pantalla final ── */
+.vb-done { text-align: center; padding: 50px 20px; }
+.vb-done-emoji { font-size: 44px; }
+.vb-done-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 30px; color: var(--primary); margin: 12px 0 6px; }
+.vb-done-score { font-size: 16px; color: var(--ink); margin-bottom: 6px; }
+.vb-done-sub { font-size: 13.5px; color: var(--ink-muted); margin-bottom: 26px; }
+.vb-done-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.vb-done-btn { padding: 12px 26px; border-radius: 11px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; border: none; display: inline-flex; align-items: center; }
+.vb-done-btn.primary { background: var(--primary); color: var(--on-primary); }
+.vb-done-btn.ghost { background: var(--bg-sunken); color: var(--primary); border: 1px solid var(--line); }
+
+@media (max-width: 560px) {
+    .vb-themes { grid-template-columns: 1fr; }
+    .vb-ctas { flex-direction: column; }
+    .vb-word { font-size: 34px; }
+}

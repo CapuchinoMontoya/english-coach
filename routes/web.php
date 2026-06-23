@@ -17,6 +17,11 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\StreakController;
+use App\Http\Controllers\TranslationController;
+use App\Http\Controllers\VerbController;
+use App\Http\Controllers\VocabularyController;
+use App\Http\Controllers\PhoneticController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -84,11 +89,24 @@ Route::middleware(['auth', 'verified', 'role:student', 'placement.done'])->group
     Route::post('settings/profile/avatar',  [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::delete('settings/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
 
-    Route::get('/vocabulary', fn() => Inertia::render('vocabulary/index'))->name('vocabulary.index');
+    Route::get('/vocabulary',         [VocabularyController::class, 'index'])->name('vocabulary.index');
+    Route::get('/vocabulary/study',   [VocabularyController::class, 'study'])->name('vocabulary.study');
+    Route::post('/vocabulary/answer', [VocabularyController::class, 'answer'])->name('vocabulary.answer');
+
+    Route::get('/verbs',         [VerbController::class, 'index'])->name('verbs.index');
+    Route::get('/verbs/study',   [VerbController::class, 'study'])->name('verbs.study');
+    Route::post('/verbs/answer', [VerbController::class, 'answer'])->name('verbs.answer');
+
+    Route::get('/streak', [StreakController::class, 'index'])->name('streak.index');
+
+    Route::post('/traducir', [TranslationController::class, 'translate'])->name('translation.translate');
+
+    Route::post('/api/phonetic-translator', [PhoneticController::class, 'translate']);
+
     Route::get('/grammar',    fn() => Inertia::render('grammar/index'))->name('grammar.index');
     Route::get('/flashcards', fn() => Inertia::render('flashcards/index'))->name('flashcards.index');
     Route::get('/progress',   fn() => Inertia::render('progress/index'))->name('progress.index');
-    Route::get('/streak',     fn() => Inertia::render('streak/index'))->name('streak.index');
+    // Route::get('/streak',     fn() => Inertia::render('streak/index'))->name('streak.index');
 });
 
 // ── Authenticated (email verification, password, logout, settings) ────────────

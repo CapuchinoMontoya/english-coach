@@ -10,9 +10,16 @@ use Illuminate\Support\Collection;
 class SessionOrchestratorService
 {
     // Reglas de mastery — todas deben cumplirse
-    private const MIN_SESSIONS        = 1;     // mínimo de sesiones para completar un tema
-    private const MIN_CUMULATIVE      = 75;    // promedio ponderado mínimo
-    private const MIN_LAST_TWO_SCORE  = 70;    // consistencia en las últimas N sesiones
+    private const MIN_SESSIONS = 1;     // mínimo de sesiones para completar un tema
+
+    /**
+     * Mínima aprobatoria según el nivel del estudiante:
+     * A1 y A2 → 70%, niveles superiores (B1+) → 80%.
+     */
+    public function passThreshold(string $level): int
+    {
+        return in_array(strtoupper($level), ['A1', 'A2'], true) ? 70 : 80;
+    }
 
     /**
      * Determina el estado de la sesión actual para un tema.
@@ -97,16 +104,17 @@ class SessionOrchestratorService
         // 4. Recalcular el score acumulado (ponderado: sesiones recientes pesan más)
         $cumulativeScore = $this->calculateCumulativeScore(collect($data['sessions']));
 
-        // 5. Aplicar las reglas de mastery
+        // 5. Aplicar las reglas de mastery — umbral según el nivel del estudiante
+        $threshold     = $this->passThreshold($user->learningProfile->real_level ?? 'B1');
         $sessionsCount = count($data['sessions']);
         $lastTwoScores = collect($data['sessions'])->take(-2)->pluck('score');
 
         $mastered =
-            empty($data['aspects_remaining'])                                        // todos los aspectos cubiertos
-            && $cumulativeScore >= self::MIN_CUMULATIVE                              // promedio sólido
-            && $sessionsCount >= self::MIN_SESSIONS                                  // sesiones mínimas
-            && $lastTwoScores->count() >= self::MIN_SESSIONS                        // hay suficientes sesiones
-            && $lastTwoScores->every(fn ($s) => $s >= self::MIN_LAST_TWO_SCORE);    // consistencia
+            empty($data['aspects_remaining'])                                  // todos los aspectos cubiertos
+            && $cumulativeScore >= $threshold                                  // promedio sólido para su nivel
+            && $sessionsCount >= self::MIN_SESSIONS                            // sesiones mínimas
+            && $lastTwoScores->count() >= self::MIN_SESSIONS                   // hay suficientes sesiones
+            && $lastTwoScores->every(fn ($s) => $s >= $threshold);            // consistencia para su nivel
 
         // 6. Persistir el estado
         $progress->update([

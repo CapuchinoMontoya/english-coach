@@ -27,8 +27,12 @@ interface ListeningGameProps {
     song:        Song
     rewindSecs?: number
     graceSecs?:  number
+    bestScore?:  number | null
     onComplete?: (result: { correct: number; total: number; score: number }) => void
 }
+
+// Puntos por blank: acierto a la primera = 1.0; acierto tras error/rewind = 0.5; fallado = 0
+const PENALTY_FACTOR = 0.5
 
 type GameState = 'loading' | 'ready' | 'playing' | 'paused_miss' | 'completed'
 
@@ -49,24 +53,42 @@ export default function ListeningGame({
     song,
     rewindSecs = 4,
     graceSecs  = 0.5,
+    bestScore  = null,
     onComplete,
 }: ListeningGameProps) {
     const [state,      setState]      = useState<GameState>('loading')
     const [activeLine, setActiveLine] = useState(0)
     const [answers,    setAnswers]    = useState<Record<number, string>>({})
     const [statuses,   setStatuses]   = useState<Record<number, 'pending' | 'correct' | 'missed'>>({})
+    const [penalties,  setPenalties]  = useState<Record<number, boolean>>({})
     const [missedLine, setMissedLine] = useState<number | null>(null)
 
-    const playerRef   = useRef<any>(null)
-    const pollRef     = useRef<number | null>(null)
-    const scrollRef   = useRef<HTMLDivElement>(null)
-    const answersRef  = useRef(answers)
-    const statusesRef = useRef(statuses)
+    const playerRef    = useRef<any>(null)
+    const pollRef      = useRef<number | null>(null)
+    const scrollRef    = useRef<HTMLDivElement>(null)
+    const lyricsRef    = useRef<HTMLDivElement>(null)
+    const lineRefs     = useRef<(HTMLDivElement | null)[]>([])
+    const answersRef   = useRef(answers)
+    const statusesRef  = useRef(statuses)
+    const penaltiesRef = useRef(penalties)
 
-    answersRef.current  = answers
-    statusesRef.current = statuses
+    answersRef.current   = answers
+    statusesRef.current  = statuses
+    penaltiesRef.current = penalties
 
     const blankLines = song.lines.filter(l => l.blank).length
+
+    // Score ponderado: penaliza los blanks acertados tras error/rewind
+    const computeScore = useCallback(() => {
+        if (blankLines === 0) return 0
+        let earned = 0
+        song.lines.forEach((l, i) => {
+            if (l.blank && statusesRef.current[i] === 'correct') {
+                earned += penaltiesRef.current[i] ? PENALTY_FACTOR : 1
+            }
+        })
+        return Math.round((earned / blankLines) * 100)
+    }, [song.lines, blankLines])
 
     // ── Cargar YouTube IFrame API ─────────────────────────────────────────────
     useEffect(() => {
@@ -136,13 +158,18 @@ export default function ListeningGame({
         }, 100)
     }, [song.lines, activeLine, graceSecs])
 
-    // ── Scroll automático ──────────────────────────────────────────────────────
+    // ── Centrado medido: la línea activa siempre al centro, sin importar saltos ─
+    // Mide la posición real del elemento (soporta líneas que ocupan 1 o 2 renglones)
+    // y lo centra en el contenedor — así nunca se oculta tras un error.
     useEffect(() => {
-        if (scrollRef.current) {
-            const offset = Math.max(0, activeLine * 45 - 110)
-            scrollRef.current.style.transform = `translateY(-${offset}px)`
-        }
-    }, [activeLine])
+        const container = lyricsRef.current
+        const el        = lineRefs.current[activeLine]
+        const scroll    = scrollRef.current
+        if (!container || !el || !scroll) return
+
+        const offset = el.offsetTop - container.clientHeight / 2 + el.offsetHeight / 2
+        scroll.style.transform = `translateY(${-Math.max(0, offset)}px)`
+    }, [activeLine, state])
 
     // ── Seleccionar opción ─────────────────────────────────────────────────────
     function selectOption(lineIdx: number, option: string) {
@@ -150,8 +177,13 @@ export default function ListeningGame({
         setAnswers(a => ({ ...a, [lineIdx]: option }))
 
         const line = song.lines[lineIdx]
-        if (line.blank && normalize(option) === normalize(line.blank.word)) {
-            setStatuses(s => ({ ...s, [lineIdx]: 'correct' }))
+        if (line.blank) {
+            if (normalize(option) === normalize(line.blank.word)) {
+                setStatuses(s => ({ ...s, [lineIdx]: 'correct' }))
+            } else {
+                // Eligió mal: aunque después acierte, este blank ya vale menos
+                setPenalties(p => ({ ...p, [lineIdx]: true }))
+            }
         }
     }
 
@@ -169,6 +201,8 @@ export default function ListeningGame({
 
         setStatuses(s => { const n = { ...s }; delete n[missedLine]; return n })
         setAnswers(a => { const n = { ...a }; delete n[missedLine]; return n })
+        // Reintentar tras fallar penaliza el blank (acierto posterior vale menos)
+        setPenalties(p => ({ ...p, [missedLine]: true }))
         setMissedLine(null)
         setState('playing')
 
@@ -188,7 +222,7 @@ export default function ListeningGame({
     function finishGame() {
         if (pollRef.current) clearInterval(pollRef.current)
         const correct = Object.values(statusesRef.current).filter(s => s === 'correct').length
-        const score   = blankLines > 0 ? Math.round((correct / blankLines) * 100) : 0
+        const score   = computeScore()
         setState('completed')
         onComplete?.({ correct, total: blankLines, score })
     }
@@ -201,6 +235,7 @@ export default function ListeningGame({
     const showChoices = targetLine !== -1 && activeLine >= targetLine - 1
 
     const correctCount = Object.values(statuses).filter(s => s === 'correct').length
+    const liveScore    = computeScore()
 
     // ── Render de una línea con su slot ───────────────────────────────────────
     function renderLine(line: LyricLine, i: number): React.ReactNode {
@@ -249,13 +284,19 @@ export default function ListeningGame({
             {(state === 'playing' || state === 'paused_miss') && (
                 <div className="la-stats">
                     <div className="la-stat">
+                        <div className="la-stat-num">{liveScore}</div>
+                        <div className="la-stat-label">Score</div>
+                    </div>
+                    <div className="la-stat">
                         <div className="la-stat-num">{correctCount}/{blankLines}</div>
                         <div className="la-stat-label">Correct</div>
                     </div>
-                    <div className="la-stat">
-                        <div className="la-stat-num">{activeLine + 1}/{song.lines.length}</div>
-                        <div className="la-stat-label">Line</div>
-                    </div>
+                    {bestScore !== null && (
+                        <div className="la-stat">
+                            <div className="la-stat-num">{bestScore}</div>
+                            <div className="la-stat-label">Best</div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -290,10 +331,14 @@ export default function ListeningGame({
 
             {(state === 'playing' || state === 'paused_miss') && (
                 <>
-                    <div className="la-lyrics">
+                    <div className="la-lyrics" ref={lyricsRef}>
                         <div ref={scrollRef} className="la-lyrics-scroll">
                             {song.lines.map((line, i) => (
-                                <div key={i} className={`la-line ${i === activeLine ? 'active' : ''} ${i < activeLine ? 'past' : ''}`}>
+                                <div
+                                    key={i}
+                                    ref={el => { lineRefs.current[i] = el }}
+                                    className={`la-line ${i === activeLine ? 'active' : ''} ${i < activeLine ? 'past' : ''}`}
+                                >
                                     {renderLine(line, i)}
                                 </div>
                             ))}
@@ -326,17 +371,26 @@ export default function ListeningGame({
                 </>
             )}
 
-            {state === 'completed' && (
-                <div className="la-complete">
-                    <div className="la-complete-score">{blankLines > 0 ? Math.round((correctCount / blankLines) * 100) : 0}</div>
-                    <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 4, color: '#2E7D32' }}>
-                        You got {correctCount} of {blankLines} words!
+            {state === 'completed' && (() => {
+                const isRecord = bestScore === null || liveScore > bestScore
+                return (
+                    <div className="la-complete">
+                        <div className="la-complete-score">{liveScore}</div>
+                        <div className="la-complete-headline">
+                            You got {correctCount} of {blankLines} words!
+                        </div>
+                        {isRecord ? (
+                            <div className="la-complete-record">🏆 New best score!</div>
+                        ) : (
+                            <div className="la-complete-best">Your best: {bestScore}</div>
+                        )}
+                        <p className="la-complete-note">
+                            First-try answers are worth full points — rewinds and wrong guesses count for less.
+                            The more you do this, the sharper your ear gets.
+                        </p>
                     </div>
-                    <p style={{ fontSize: 13, color: '#5D7A52' }}>
-                        Great listening practice. The more you do this, the sharper your ear gets.
-                    </p>
-                </div>
-            )}
+                )
+            })()}
 
         </div>
     )
