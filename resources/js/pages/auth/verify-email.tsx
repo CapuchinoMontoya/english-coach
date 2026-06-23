@@ -2,7 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { LoaderCircle, Mail } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/Alert';
 import { AuthShell } from './_auth-shell';
 

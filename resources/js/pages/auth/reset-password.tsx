@@ -2,9 +2,9 @@ import { Head, useForm } from '@inertiajs/react';
 import { ArrowRight, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/Field';
-import { Input } from '@/components/ui/input-temp';
+import { Input } from '@/components/ui/input';
 import { AuthShell } from './_auth-shell';
 
 interface ResetPasswordProps {

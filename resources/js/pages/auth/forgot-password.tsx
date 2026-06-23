@@ -2,9 +2,9 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, LoaderCircle } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/Field';
-import { Input } from '@/components/ui/input-temp';
+import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/Alert';
 import { AuthShell } from './_auth-shell';
 

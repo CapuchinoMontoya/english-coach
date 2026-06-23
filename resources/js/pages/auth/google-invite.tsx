@@ -2,9 +2,9 @@ import { Head, useForm } from '@inertiajs/react';
 import { ArrowRight, LoaderCircle, KeyRound } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/Field';
-import { Input } from '@/components/ui/input-temp';
+import { Input } from '@/components/ui/input';
 
 interface Props {
     name: string;
