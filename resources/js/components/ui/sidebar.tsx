@@ -4,7 +4,7 @@ import { PanelLeft } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input-temp';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/Skeleton';

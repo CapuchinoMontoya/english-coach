@@ -4,7 +4,7 @@ import { FormEventHandler } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input-temp';
 import { Alert } from '@/components/ui/Alert';
 import { AuthShell } from './_auth-shell';
 

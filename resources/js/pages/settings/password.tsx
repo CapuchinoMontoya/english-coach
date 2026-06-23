@@ -8,7 +8,7 @@ import { FormEventHandler, useRef } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input-temp';
 import { Label } from '@/components/ui/label';
 
 const breadcrumbs: BreadcrumbItem[] = [
