@@ -153,7 +153,7 @@ export default function GoogleInvite({ name, email }: Props) {
                                 required
                                 autoFocus
                                 autoComplete="off"
-                                placeholder="e.g. KPUCOFFE20"
+                                placeholder="e.g. KPUCOFFEE20"
                                 value={data.invitation_code}
                                 onChange={(e) => setData('invitation_code', e.target.value.toUpperCase())}
                                 invalid={!!errors.invitation_code}

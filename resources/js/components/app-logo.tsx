@@ -18,7 +18,7 @@ export default function AppLogo({ open = true }: { open?: boolean }) {
                     flexShrink: 0,
                 }}
             >
-                C
+                <img src="/favicon.ico" alt="Logo del sitio" width="32" height="32" />
                 <span
                     aria-hidden="true"
                     style={{
