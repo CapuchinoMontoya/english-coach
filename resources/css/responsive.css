@@ -1,0 +1,68 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Responsive — ajustes para móvil/tablet. El sidebar se vuelve un drawer
+   (ver app-sidebar-layout.tsx); aquí afinamos los contenedores de página.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Animación del backdrop del drawer */
+@keyframes cap-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Evita scroll horizontal accidental en cualquier vista */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* ── Tablet ────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .vb, .vrb { padding-left: 16px; padding-right: 16px; }
+}
+
+/* ── Móvil ─────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    /* Contenedores de página: menos padding lateral, respiran mejor */
+    .vb, .vrb, .vb-study, .vrb-study, .lesson-root, .la-root {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    /* Títulos editoriales más contenidos para no romper en 2-3 líneas enormes */
+    .vb-title, .vrb-title { font-size: 26px; }
+    .la-song-title { font-size: 23px; }
+    .mastery-title, .lesson-topic-title { font-size: 22px; }
+    .results-score-num { font-size: 56px; }
+
+    /* Tarjetas de estudio con padding interno reducido */
+    .vb-card, .vrb-card { padding: 22px 18px; }
+
+    /* ── Verbs: barra de stats + estudiar ── */
+    .vrb-bar { gap: 8px; }
+    .vrb-stat { min-width: 0; flex: 1 1 0; padding: 10px 6px; }
+    .vrb-stat-num { font-size: 22px; }
+    .vrb-cta { margin-left: 0; flex-basis: 100%; justify-content: center; padding: 13px; }
+
+    /* ── Verbs: controles de filtro apilados y a lo ancho ── */
+    .vrb-controls { gap: 8px; }
+    .vrb-search { flex-basis: 100%; }
+    .vrb-seg { width: 100%; }
+    .vrb-seg button { flex: 1; }
+    .vrb-count { margin-left: 0; width: 100%; text-align: center; }
+
+    /* ── Vocabulary: CTAs en columna ── */
+    .vb-ctas { flex-direction: column; }
+
+    /* ── Lecciones: barra de fases sin nombres apretados ── */
+    .phase-step span { display: none; }       /* deja solo los puntos numerados */
+    .phase-bar { gap: 0; }
+    .lesson-actions { flex-direction: column; }
+    .lesson-actions .btn-lesson-primary,
+    .lesson-actions .btn-lesson-secondary { width: 100%; }
+
+    /* ── Ejercicios y teoría con menos padding ── */
+    .exercise-card, .theory-content, .results-score, .mastery-banner { padding-left: 16px; padding-right: 16px; }
+    .theory-content { padding-top: 20px; padding-bottom: 20px; }
+
+    /* ── Listening: stats centrados ── */
+    .la-stats { gap: 10px; }
+}
+
+/* En pantallas muy estrechas, las tarjetas de tema a una sola columna */
+@media (max-width: 460px) {
+    .vb-themes { grid-template-columns: 1fr; }
+}

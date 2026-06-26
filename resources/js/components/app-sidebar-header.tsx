@@ -3,10 +3,10 @@ import { PalettePicker } from '@/components/layout/PalettePicker';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useSidebarCtx } from '@/layouts/app/app-sidebar-layout';
 import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
-import { PanelLeft } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
-    const { toggle } = useSidebarCtx();
+    const { toggle, isMobile } = useSidebarCtx();
 
     return (
         <header
@@ -24,7 +24,8 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
             {/* Toggle button */}
             <button
                 onClick={toggle}
-                title="Toggle sidebar"
+                title={isMobile ? 'Menú' : 'Toggle sidebar'}
+                aria-label="Menú"
                 style={{
                     width: 32,
                     height: 32,
@@ -44,7 +45,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                     (e.currentTarget as HTMLElement).style.color = 'var(--ink-muted)';
                 }}
             >
-                <PanelLeft size={18} />
+                {isMobile ? <Menu size={20} /> : <PanelLeft size={18} />}
             </button>
 
             {/* Divider */}

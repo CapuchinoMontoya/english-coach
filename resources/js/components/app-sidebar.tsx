@@ -59,12 +59,29 @@ const navGroups: NavGroup[] = [
 ];
 
 export function AppSidebar() {
-    const { open } = useSidebarCtx();
+    const { open, isMobile, mobileOpen, closeMobile } = useSidebarCtx();
     const page = usePage<SharedData>();
     const { auth } = page.props;
     const getInitials = useInitials();
 
-    const W = open ? 240 : 60;
+    // En móvil el contenido va siempre expandido (es un drawer de 240px).
+    const expanded = isMobile ? true : open;
+    const W = expanded ? 240 : 60;
+
+    // Estilos específicos del drawer en móvil (off-canvas, encima del contenido)
+    const mobileStyle: React.CSSProperties = isMobile
+        ? {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              zIndex: 50,
+              width: 248,
+              minWidth: 248,
+              transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 220ms cubic-bezier(0.2,0.7,0.2,1)',
+              boxShadow: mobileOpen ? 'var(--shadow-lg)' : 'none',
+          }
+        : {};
 
     return (
         <aside
@@ -79,6 +96,7 @@ export function AppSidebar() {
                 transition: 'width 200ms cubic-bezier(0.2,0.7,0.2,1), min-width 200ms cubic-bezier(0.2,0.7,0.2,1)',
                 overflow: 'hidden',
                 flexShrink: 0,
+                ...mobileStyle,
             }}
         >
             {/* ── Logo ── */}
@@ -95,6 +113,7 @@ export function AppSidebar() {
                 <Link
                     href="/dashboard"
                     prefetch
+                    onClick={() => { if (isMobile) closeMobile(); }}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -106,12 +125,12 @@ export function AppSidebar() {
                         /* --- ESTA ES LA CLAVE DEL CENTRADO --- */
                         /* Si está abierto, gap de 10px y padding a la izquierda.
                            Si está cerrado, sin gap y sin padding para centrar. */
-                        gap: open ? 10 : 0,
-                        padding: open ? '0 12px' : '0',
-                        justifyContent: open ? 'flex-start' : 'center',
+                        gap: expanded ?10 : 0,
+                        padding: expanded ?'0 12px' : '0',
+                        justifyContent: expanded ?'flex-start' : 'center',
                     }}
                 >
-                    <AppLogo open={open} />
+                    <AppLogo open={expanded} />
                 </Link>
             </div>
 
@@ -126,7 +145,7 @@ export function AppSidebar() {
             >
                 {navGroups.map((group) => (
                     <div key={group.title} style={{ marginBottom: 8 }}>
-                        {open && (
+                        {expanded &&(
                             <p
                                 style={{
                                     fontSize: 10,
@@ -142,7 +161,7 @@ export function AppSidebar() {
                                 {group.title}
                             </p>
                         )}
-                        {!open && <div style={{ height: 8 }} />}
+                        {!expanded && <div style={{ height: 8 }} />}
                         {group.items.map((item) => {
                             const isActive = page.url.startsWith(item.url);
                             return (
@@ -150,12 +169,13 @@ export function AppSidebar() {
                                     key={item.title}
                                     href={item.url}
                                     prefetch
-                                    title={!open ? item.title : undefined}
+                                    onClick={() => { if (isMobile) closeMobile(); }}
+                                    title={!expanded ?item.title : undefined}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 10,
-                                        padding: open ? '8px 12px' : '8px 0',
+                                        padding: expanded ?'8px 12px' : '8px 0',
                                         margin: '1px 8px',
                                         borderRadius: 8,
                                         textDecoration: 'none',
@@ -165,7 +185,7 @@ export function AppSidebar() {
                                         background: isActive ? 'var(--bg-elevated)' : 'transparent',
                                         boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
                                         transition: 'all 120ms',
-                                        justifyContent: open ? 'flex-start' : 'center',
+                                        justifyContent: expanded ?'flex-start' : 'center',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                     }}
@@ -177,7 +197,7 @@ export function AppSidebar() {
                                             color: isActive ? 'var(--accent)' : 'var(--ink-muted)',
                                         }}
                                     />
-                                    {open && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>}
+                                    {expanded &&<span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>}
                                 </Link>
                             );
                         })}
@@ -200,7 +220,8 @@ export function AppSidebar() {
                 <Link
                     href={route('profile.edit')}
                     prefetch
-                    title={!open ? 'Settings' : undefined}
+                    onClick={() => { if (isMobile) closeMobile(); }}
+                    title={!expanded ?'Settings' : undefined}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -211,7 +232,7 @@ export function AppSidebar() {
                         fontSize: 'var(--fs-14)',
                         color: 'var(--ink-muted)',
                         transition: 'all 120ms',
-                        justifyContent: open ? 'flex-start' : 'center',
+                        justifyContent: expanded ?'flex-start' : 'center',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                     }}
@@ -225,7 +246,7 @@ export function AppSidebar() {
                     }}
                 >
                     <Settings size={18} style={{ flexShrink: 0 }} />
-                    {open && <span>Settings</span>}
+                    {expanded &&<span>Settings</span>}
                 </Link>
 
                 {/* User */}
@@ -236,7 +257,7 @@ export function AppSidebar() {
                         gap: 10,
                         padding: '8px',
                         borderRadius: 8,
-                        justifyContent: open ? 'flex-start' : 'center',
+                        justifyContent: expanded ?'flex-start' : 'center',
                         overflow: 'hidden',
                     }}
                 >
@@ -254,7 +275,7 @@ export function AppSidebar() {
                             fontWeight: 600,
                             flexShrink: 0,
                         }}
-                        title={open ? undefined : auth.user.name}
+                        title={expanded ?undefined : auth.user.name}
                     >
                         {auth.user.avatar
                             ? <img
@@ -265,7 +286,7 @@ export function AppSidebar() {
                             : getInitials(auth.user.name)
                         }
                     </div>
-                    {open && (
+                    {expanded &&(
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 'var(--fs-13)', fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {auth.user.name}
@@ -275,7 +296,7 @@ export function AppSidebar() {
                             </p>
                         </div>
                     )}
-                    {open && (
+                    {expanded &&(
                         <Link
                             href={route('logout')}
                             method="post"
