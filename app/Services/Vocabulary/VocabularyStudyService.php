@@ -345,6 +345,7 @@ class VocabularyStudyService
 
     private function levelOrderSql(): string
     {
-        return "FIELD(level,'A1','A2','B1','B2','C1','C2')";
+        // CASE en vez de FIELD(): funciona en MySQL, SQLite y Postgres
+        return "CASE level WHEN 'A1' THEN 1 WHEN 'A2' THEN 2 WHEN 'B1' THEN 3 WHEN 'B2' THEN 4 WHEN 'C1' THEN 5 WHEN 'C2' THEN 6 ELSE 7 END";
     }
 }

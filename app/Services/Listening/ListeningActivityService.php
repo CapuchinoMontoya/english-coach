@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class ListeningActivityService
 {
-    private const CADENCE = 1; 
+    // Cada cuántas lecciones se ofrece una actividad de listening.
+    private const CADENCE = 2;
 
     public function __construct(
         private AIProviderService    $ai,
@@ -22,6 +23,13 @@ class ListeningActivityService
     // ── ¿Toca una actividad de listening ahora? ───────────────────────────────
     public function shouldSuggest(User $user): bool
     {
+        // La actividad de canciones es rellenar huecos eligiendo entre palabras casi
+        // homófonas: discriminar pares mínimos en habla rápida es una destreza de B1.
+        // En A1 eso no es práctica, es ruido (y el catálogo no tiene canciones A1).
+        // Siguen disponibles en la biblioteca libre, sin calificación ni presión.
+        $level = strtoupper($user->learningProfile->real_level ?? 'B1');
+        if (in_array($level, ['A0', 'A1'], true)) return false;
+
         $completed = LearningSession::query()->where('user_id', $user->id)
             ->where('mode', 'lesson')
             ->whereNotNull('score')
@@ -37,6 +45,72 @@ class ListeningActivityService
         $interests = $user->learningProfile->learning_style['interests'] ?? [];
 
         return $this->findCached($user, $level, $interests);
+    }
+
+    // ── Buscar en YouTube + LRCLIB y crear la actividad (canciones ilimitadas) ─
+    /**
+     * El usuario busca una canción por texto. Buscamos la letra sincronizada en
+     * LRCLIB y el audio oficial en YouTube que cuadre en duración; si ambos
+     * empatan, creamos la actividad y la agregamos al catálogo.
+     *
+     * Devuelve ['status' => 'created'|'exists'|'no_lyrics'|'no_video', 'activity' => ?]
+     */
+    public function createFromSearch(User $user, string $query): array
+    {
+        $level = $user->learningProfile->real_level ?? 'B1';
+
+        // 1. Letra sincronizada + metadatos canónicos (tolerante a caídas de LRCLIB)
+        try {
+            $lyrics = $this->lrclib->searchQuery($query);
+        } catch (\Throwable) {
+            $lyrics = null;
+        }
+        if (! $lyrics || empty($lyrics['synced_lyrics']) || $lyrics['artist'] === '' || $lyrics['title'] === '') {
+            return ['status' => 'no_lyrics'];
+        }
+
+        $artist = $lyrics['artist'];
+        $title  = $lyrics['title'];
+
+        // 2. ¿Ya existe en el catálogo? → reutiliza (reactiva si estaba oculta)
+        $existing = ListeningActivity::query()
+            ->where('type', 'song')
+            ->whereRaw('LOWER(artist) = ?', [mb_strtolower($artist)])
+            ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+            ->first();
+
+        if ($existing) {
+            if (! $existing->is_active) $existing->update(['is_active' => true]);
+            return ['status' => 'exists', 'activity' => $existing];
+        }
+
+        // 3. Audio oficial en YouTube que sincronice con la letra (tolerante a red)
+        try {
+            $video = $this->youtube->findBestMatch($artist, $title, (int) $lyrics['duration']);
+        } catch (\Throwable) {
+            $video = null;
+        }
+        if (! $video) {
+            return ['status' => 'no_video'];
+        }
+
+        // 4. Crear la actividad
+        $activity = ListeningActivity::create([
+            'type'             => 'song',
+            'title'            => $title,
+            'artist'           => $artist,
+            'youtube_video_id' => $video['video_id'],
+            'lrclib_id'        => $lyrics['lrclib_id'],
+            'duration'         => $lyrics['duration'],
+            'offset_seconds'   => $video['offset'] ?? 0,
+            'synced_lyrics'    => $lyrics['synced_lyrics'],
+            'level'            => $level,
+            'tags'             => [$artist],
+            'source'           => 'lrclib',
+            'is_active'        => true,
+        ]);
+
+        return ['status' => 'created', 'activity' => $activity];
     }
 
     // ── Obtener una actividad: caché primero, discovery si hace falta ──────────
@@ -66,15 +140,37 @@ class ListeningActivityService
             ->pluck('listening_activity_id')
             ->all();
 
-        // Busca por solapamiento de tags con los intereses, mismo nivel, no jugada
-        return ListeningActivity::active()
-            ->where('level', $level)
-            ->whereNotIn('id', $playedIds)
-            ->get()
-            ->first(fn ($a) => count(array_intersect(
-                array_map('mb_strtolower', $a->tags ?? []),
-                array_map('mb_strtolower', $interests)
-            )) > 0);
+        // Busca por solapamiento de tags con los intereses, no jugada. Primero el nivel
+        // exacto; si el catálogo no tiene ese nivel (p. ej. A1), cae a niveles vecinos.
+        foreach (self::levelLadder($level) as $lvl) {
+            $match = ListeningActivity::active()
+                ->where('type', 'song')
+                ->where('level', $lvl)
+                ->whereNotIn('id', $playedIds)
+                ->get()
+                ->first(fn ($a) => count(array_intersect(
+                    array_map('mb_strtolower', $a->tags ?? []),
+                    array_map('mb_strtolower', $interests)
+                )) > 0);
+            if ($match) return $match;
+        }
+
+        return null;
+    }
+
+    /** Nivel pedido primero, luego los vecinos más cercanos (A1 → A2 → B1 …). */
+    public static function levelLadder(string $level): array
+    {
+        $order = ['A1', 'A2', 'B1', 'B2', 'C1'];
+        $i     = array_search(strtoupper($level), $order, true);
+        if ($i === false) return [$level, 'A2', 'B1'];
+
+        $ladder = [$order[$i]];
+        for ($d = 1; $d < count($order); $d++) {
+            if (isset($order[$i + $d])) $ladder[] = $order[$i + $d];
+            if (isset($order[$i - $d])) $ladder[] = $order[$i - $d];
+        }
+        return $ladder;
     }
 
     // ── Discovery: IA sugiere → LRCLIB → YouTube → guardar ────────────────────

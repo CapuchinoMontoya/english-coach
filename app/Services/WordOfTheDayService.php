@@ -33,9 +33,9 @@ class WordOfTheDayService
                         if (!empty($wordsArray)) {
                             $randomIndex = array_rand($wordsArray);
                             $word = strtolower($wordsArray[$randomIndex]['word']);
-
+                            
                             // 3. Consultamos la API del diccionario para esa palabra
-                            $dictResponse = Http::timeout(3)->get("https://api.dictionaryapi.dev/api/v2/entries/en/{$word}");
+                            $dictResponse = Http::timeout(120)->get("https://api.dictionaryapi.dev/api/v2/entries/en/{$word}");
 
                             if ($dictResponse->successful()) {
                                 $data = $dictResponse->json()[0];

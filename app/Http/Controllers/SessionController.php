@@ -18,11 +18,16 @@ use App\Services\Vocabulary\VocabularyStudyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SessionController extends Controller
 {
+    // Cuántos ejercicios debe tener una sesión publicada. El prompt pide 4-5 de
+    // práctica y 2-3 de warm-up; si el saneador descarta alguno, se repone.
+    private const PRACTICE_TARGET = 4;
+    private const WARMUP_TARGET   = 2;
     public function __construct(
         private AIProviderService          $ai,
         private AIContextBuilderService    $context,
@@ -110,9 +115,12 @@ class SessionController extends Controller
             ['sessionState' => $state, 'focusWords' => $focusWords, 'focusVerbs' => $focusVerbs]
         );
 
-        // Genera y sanea; reintenta una vez si la práctica queda con muy pocos
-        // ejercicios válidos tras descartar los que vienen rotos.
-        $session = null;
+        // Genera y sanea. Nos quedamos con el MEJOR intento, no con el último: el
+        // reintento existe para mejorar una práctica flaca, y antes podía empeorarla
+        // (si el intento 1 daba 4 ejercicios y el 2 daba 1, se publicaba el de 1).
+        $session   = null;
+        $bestCount = -1;
+
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             $raw       = $this->ai->complete(
                 'lesson',
@@ -127,11 +135,25 @@ class SessionController extends Controller
             }
 
             $candidate = $this->sanitizeSession($candidate);
-            $session   = $candidate;
+            $count     = count($candidate['practice']['exercises'] ?? []);
 
-            // Suficientes ejercicios buenos → no hace falta reintentar
-            if (count($candidate['practice']['exercises'] ?? []) >= 3) {
+            if ($count > $bestCount) {
+                $session   = $candidate;
+                $bestCount = $count;
+            }
+
+            if ($bestCount >= self::PRACTICE_TARGET) {
                 break;
+            }
+        }
+
+        // Reponer lo que el saneador descartó: pedimos SOLO los ejercicios que faltan,
+        // en vez de regenerar la lección entera y tirar una mini-lección que estaba bien.
+        if ($session) {
+            $session = $this->topUpExercises($session, $systemPrompt, 'practice', self::PRACTICE_TARGET);
+
+            if (isset($session['warmup'])) {
+                $session = $this->topUpExercises($session, $systemPrompt, 'warmup', self::WARMUP_TARGET);
             }
         }
 
@@ -139,6 +161,14 @@ class SessionController extends Controller
         if (! $session || ! isset($session['mini_lesson']) || empty($session['practice']['exercises'])) {
             return response()->json(['error' => 'generation_failed'], 422);
         }
+
+        // La IA a veces parafrasea los grammar points para reflejar lo que de verdad
+        // enseño. Es honesto, pero el orquestador compara estas cadenas por igualdad
+        // contra el catalogo del tema: una parafrasis nunca empata y el tema no cierra.
+        $session['grammar_points_covered'] = $this->matchGrammarPoints(
+            $session['grammar_points_covered'] ?? [],
+            $topic->grammar_points ?? []
+        );
 
         $session['focus_words'] = $focusWords;
         $session['focus_verbs'] = $focusVerbs;
@@ -273,10 +303,10 @@ class SessionController extends Controller
 
             // Rellenar el catálogo en segundo plano con lo que falte
             if (! $cached || $cached->type !== 'clip') {
-                DiscoverClipJob::dispatch($user->id);
+                DiscoverClipJob::dispatchAfterResponse($user->id);
             }
             if (! $cached || $cached->type !== 'song') {
-                DiscoverListeningJob::dispatch($user->id, $topic->id);
+                DiscoverListeningJob::dispatchAfterResponse($user->id, $topic->id);
             }
         }
 
@@ -322,6 +352,125 @@ class SessionController extends Controller
      * Sanea los ejercicios generados: descarta los que no se pueden responder
      * y oculta la respuesta cuando la IA la dejó visible.
      */
+    /**
+     * Devuelve los grammar points del catalogo que la IA dice haber cubierto, con la
+     * cadena EXACTA del catalogo. Empata por igualdad, luego sin acentos/mayusculas y
+     * por ultimo por solapamiento de palabras clave (para tolerar parafrasis como
+     * "verb to be: am, is, are (negative)" -> "...(positive, negative, question)").
+     * Lo que no empata con nada se descarta: es mejor que el tema avance de menos que
+     * marcar como aprendido algo que no esta en el plan.
+     *
+     * @param  array<int, mixed>   $claimed
+     * @param  array<int, string>  $catalog
+     * @return array<int, string>
+     */
+    private function matchGrammarPoints(array $claimed, array $catalog): array
+    {
+        if (empty($catalog)) return [];
+
+        $norm = fn (string $s) => preg_replace('/[^a-z0-9 ]/', ' ',
+            mb_strtolower(trim($s)));
+
+        $matched = [];
+        foreach ($claimed as $c) {
+            if (! is_string($c) || trim($c) === '') continue;
+
+            // 1. Igualdad exacta
+            $hit = in_array($c, $catalog, true) ? $c : null;
+
+            // 2. Igualdad laxa (minusculas, sin puntuacion)
+            if ($hit === null) {
+                foreach ($catalog as $p) {
+                    if ($norm($p) === $norm($c)) { $hit = $p; break; }
+                }
+            }
+
+            // 3. Mejor solapamiento de palabras (>= 60% de las del candidato)
+            if ($hit === null) {
+                $cw   = array_filter(preg_split('/\s+/', $norm($c)), fn ($w) => mb_strlen($w) > 2);
+                $best = 0.0;
+                foreach ($catalog as $p) {
+                    $pw = array_filter(preg_split('/\s+/', $norm($p)), fn ($w) => mb_strlen($w) > 2);
+                    if (! $cw || ! $pw) continue;
+                    $score = count(array_intersect($cw, $pw)) / count($cw);
+                    if ($score > $best) { $best = $score; $hit = $p; }
+                }
+                if ($best < 0.6) $hit = null;
+            }
+
+            if ($hit !== null && ! in_array($hit, $matched, true)) $matched[] = $hit;
+        }
+
+        return $matched;
+    }
+
+    /**
+     * Rellena una sección a la que el saneador le tumbó ejercicios.
+     *
+     * Hace hasta 2 pedidos cortos pidiendo solo los que faltan, con los que ya pasaron
+     * como contexto para que no los repita. Si la IA sigue devolviendo basura, se
+     * publica con los que haya: una sesión de 3 ejercicios buenos es mejor que ninguna.
+     *
+     * @param  array<string, mixed>  $session
+     * @return array<string, mixed>
+     */
+    private function topUpExercises(array $session, string $systemPrompt, string $section, int $target): array
+    {
+        for ($round = 1; $round <= 2; $round++) {
+            $current = $session[$section]['exercises'] ?? [];
+            $missing = $target - count($current);
+            if ($missing <= 0) return $session;
+
+            $existing = collect($current)
+                ->map(fn ($e) => '- ' . ($e['type'] ?? '?') . ': '
+                    . (is_array($e['question'] ?? null) ? implode(' ', $e['question']) : ($e['question'] ?? '')))
+                ->implode("\n");
+
+            $ask = "{$missing} of the {$section} exercises you generated were rejected by the "
+                . "validator (a fill_blank with two gaps, an answer visible in the question, a "
+                . "multiple_choice with a bad index, or scrambled words that did not rebuild the "
+                . "answer).\n\n"
+                . "Write {$missing} REPLACEMENT exercise(s) for the same aspect: \""
+                . ($session['aspect'] ?? '') . "\".\n\n"
+                . ($existing !== '' ? "These ones were kept — do NOT repeat them:\n{$existing}\n\n" : '')
+                . "Obey every EXERCISE QUALITY rule from your instructions, especially: exactly "
+                . "ONE _____ gap per fill_blank, the answer never visible in the question, and "
+                . "word_order words that rebuild the answer exactly.\n\n"
+                . 'Return ONLY this JSON, nothing else: {"exercises": [ ... ]}';
+
+            $raw     = $this->ai->complete('lesson', $systemPrompt,
+                [['role' => 'user', 'content' => $ask]], 1500);
+            $decoded = $this->extractJson($raw);
+
+            $nuevos = [];
+            foreach ($decoded['exercises'] ?? [] as $ex) {
+                if (! is_array($ex)) continue;
+                if ($fixed = $this->sanitizeExercise($ex)) $nuevos[] = $fixed;
+            }
+
+            if (! $nuevos) {
+                Log::warning('Lección: la reposición de ejercicios no devolvió nada usable.', [
+                    'section' => $section, 'round' => $round, 'missing' => $missing,
+                ]);
+                continue;
+            }
+
+            // Ids únicos para los repuestos, sin pisar los que ya estaban
+            $usados = array_column($current, 'id');
+            foreach ($nuevos as $i => $ex) {
+                $base = ($section === 'warmup' ? 'w' : 'p') . 'r' . ($i + 1);
+                $id   = $base;
+                $n    = 1;
+                while (in_array($id, $usados, true)) { $id = $base . '_' . (++$n); }
+                $usados[]       = $id;
+                $nuevos[$i]['id'] = $id;
+            }
+
+            $session[$section]['exercises'] = array_values(array_merge($current, $nuevos));
+        }
+
+        return $session;
+    }
     private function sanitizeSession(array $session): array
     {
         foreach (['warmup', 'practice'] as $section) {
@@ -362,6 +511,10 @@ class SessionController extends Controller
                     '',
                     $question
                 ));
+
+                // Un solo hueco por ejercicio: el alumno tiene un unico campo de texto,
+                // asi que dos huecos con una sola respuesta es imposible de contestar.
+                if (preg_match_all('/_{2,}/u', $question) > 1) return null;
 
                 $hasBlank = (bool) preg_match('/_{2,}/u', $question);
                 if (! $hasBlank) {

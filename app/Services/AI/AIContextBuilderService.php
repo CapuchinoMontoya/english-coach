@@ -35,9 +35,14 @@ class AIContextBuilderService
                 ->first();
         }
 
-        return view("ai.prompts.{$mode}", array_merge(
+        $prompt = view("ai.prompts.{$mode}", array_merge(
             compact('user', 'profile', 'aiContext', 'topic', 'technique', 'firstName'),
             $extra
         ))->render();
+
+        // Blade escapa para HTML, pero esto es texto plano para un modelo: sin decodificar,
+        // el prompt le llega con "I&#039;m" y "Verb To Be &amp; Pronouns", y el modelo
+        // reproduce esas entidades dentro de las lecciones.
+        return html_entity_decode($prompt, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 }

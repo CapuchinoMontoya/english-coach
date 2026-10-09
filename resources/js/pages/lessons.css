@@ -258,6 +258,46 @@
     text-align: center;
 }
 
+/* Barra de carga única, en bloques: un bloque por etapa. El activo late, los ya
+   terminados quedan llenos. Sustituye a los tres puntitos, que no decían nada. */
+.load-bar {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    max-width: 280px;
+}
+
+.load-block {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--line);
+    transition: background .4s ease;
+}
+
+.load-block.done {
+    background: var(--primary);
+}
+
+.load-block.active {
+    background: var(--accent);
+    animation: lblock 1.4s ease-in-out infinite;
+}
+
+.load-count {
+    color: var(--ink-subtle, var(--ink-muted));
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes lblock {
+    0%, 100% { opacity: .35; }
+    50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .load-block.active { animation: none; opacity: .7; }
+}
+
 .lesson-loading-dots {
     display: flex;
     gap: 6px;

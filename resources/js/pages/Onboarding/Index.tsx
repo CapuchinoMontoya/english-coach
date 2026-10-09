@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { router } from '@inertiajs/react'
 import axios from 'axios'
+import { ArrowLeft, ArrowRight, Check, X, Plus, Sparkles, RotateCcw, Pencil } from 'lucide-react'
 import './onboarding.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ interface Option {
 
 interface Step {
     id: string
+    eyebrow: string          // etiqueta corta para la barra y el resumen
     question: string
     subtitle: string
     type: 'choice' | 'tags'
@@ -21,428 +23,666 @@ interface Step {
     multiple?: boolean
 }
 
-interface Answers {
-    [key: string]: string | string[]
-}
-
-interface User {
-    id: number
-    name: string
-}
+type Answers = Record<string, string | string[]>
 
 interface OnboardingProps {
-    user: User
+    user: { id: number; name: string }
 }
 
-// ─── Steps data ───────────────────────────────────────────────────────────────
+type Phase = 'welcome' | 'questions' | 'review'
+
+const STORAGE_KEY = 'capuchino.onboarding.v2'
+
+// ─── Pasos ────────────────────────────────────────────────────────────────────
+// Los `id` y `value` coinciden exactamente con la validación del backend.
+// Los textos van en español: es lo primero que ve alguien que aún no sabe inglés.
 
 const STEPS: Step[] = [
     {
         id: 'age_group',
         type: 'choice',
-        question: 'How old are you?',
-        subtitle: 'This helps us tailor the cultural references in your lessons.',
+        eyebrow: 'Edad',
+        question: '¿Cuántos años tienes?',
+        subtitle: 'Con esto ajustamos las referencias culturales de tus lecciones.',
         options: [
-            { value: 'under_18', label: 'Under 18', icon: '🛹', desc: 'School & teens' },
-            { value: '18_25', label: '18 - 25', icon: '🎓', desc: 'University & early career' },
-            { value: '26_35', label: '26 - 35', icon: '💼', desc: 'Professionals' },
-            { value: '36_plus', label: '36+', icon: '🌟', desc: 'Adults & lifelong learners' },
+            { value: 'under_18', label: 'Menos de 18', icon: '🛹', desc: 'Escuela y adolescencia' },
+            { value: '18_25',    label: '18 a 25',     icon: '🎓', desc: 'Universidad y primer trabajo' },
+            { value: '26_35',    label: '26 a 35',     icon: '💼', desc: 'Vida profesional' },
+            { value: '36_plus',  label: '36 o más',    icon: '🌟', desc: 'Aprendizaje de por vida' },
         ],
     },
     {
         id: 'current_level',
         type: 'choice',
-        question: 'What is your current English level?',
-        subtitle: 'Don\'t worry, we will still do a quick placement test to be sure.',
+        eyebrow: 'Nivel',
+        question: '¿Cómo andas de inglés hoy?',
+        subtitle: 'Sé honesto. Después platicamos un rato para medirlo de verdad; esto es solo el punto de partida.',
         options: [
-            { value: 'beginner', label: 'Absolute Beginner', icon: '🌱', desc: 'I know very few words.' },
-            { value: 'elementary', label: 'Elementary', icon: '🚶', desc: 'I can order food and say hi.' },
-            { value: 'intermediate', label: 'Intermediate', icon: '🏃', desc: 'I can hold a basic conversation.' },
-            { value: 'advanced', label: 'Advanced', icon: '🦅', desc: 'I can express myself comfortably.' },
+            { value: 'beginner',     label: 'Desde cero', icon: '🌱', desc: 'Sé muy pocas palabras' },
+            { value: 'elementary',   label: 'Lo básico',  icon: '🚶', desc: 'Puedo saludar y pedir comida' },
+            { value: 'intermediate', label: 'Intermedio', icon: '🏃', desc: 'Sostengo una conversación simple' },
+            { value: 'advanced',     label: 'Avanzado',   icon: '🦅', desc: 'Me expreso con comodidad' },
         ],
     },
     {
         id: 'goal',
         type: 'choice',
-        question: "What's your main goal?",
-        subtitle: 'Your entire plan will be focused around what matters most to you.',
+        eyebrow: 'Meta',
+        question: '¿Para qué quieres el inglés?',
+        subtitle: 'Todo tu plan se va a construir alrededor de esto.',
         options: [
-            { value: 'work', label: 'Work & Career', icon: '💼', desc: 'Emails, meetings, presentations' },
-            { value: 'travel', label: 'Travel', icon: '✈️', desc: 'Conversations, navigation, culture' },
-            { value: 'school', label: 'School & Exams', icon: '📚', desc: 'Academic English, TOEFL, IELTS' },
-            { value: 'general', label: 'General fluency', icon: '🌍', desc: 'Overall improvement' },
+            { value: 'work',    label: 'Trabajo', icon: '💼', desc: 'Correos, juntas, presentaciones' },
+            { value: 'travel',  label: 'Viajar',  icon: '✈️', desc: 'Moverme, pedir, conversar' },
+            { value: 'school',  label: 'Escuela', icon: '📚', desc: 'Inglés académico, TOEFL, IELTS' },
+            { value: 'general', label: 'Fluidez', icon: '🌍', desc: 'Mejorar en general' },
         ],
     },
     {
         id: 'learning_style',
         type: 'choice',
-        question: 'How do you learn best?',
-        subtitle: 'We will adapt your materials to what actually clicks for you.',
+        eyebrow: 'Estilo',
+        question: '¿Cómo aprendes mejor?',
+        subtitle: 'Adaptamos la forma de explicarte, no lo que aprendes.',
         options: [
-            { value: 'visual', label: 'Visual & Context', icon: '👁️', desc: 'Images, diagrams, and video examples' },
-            { value: 'conversational', label: 'Listening & Talking', icon: '💬', desc: 'Podcasts, roleplays, out-loud practice' },
-            { value: 'reading_writing', label: 'Reading & Writing', icon: '📝', desc: 'Articles, grammar rules, text logic' },
-            { value: 'exercises', label: 'Hands-on Practice', icon: '✏️', desc: 'Quizzes, drag & drop, repetition' },
+            { value: 'visual',          label: 'Viendo',      icon: '👁️', desc: 'Imágenes, tablas, ejemplos visuales' },
+            { value: 'conversational',  label: 'Conversando', icon: '💬', desc: 'Diálogos y práctica en voz alta' },
+            { value: 'reading_writing', label: 'Leyendo',     icon: '📝', desc: 'Textos, reglas, lógica del idioma' },
+            { value: 'exercises',       label: 'Practicando', icon: '✏️', desc: 'Ejercicios y repetición' },
         ],
     },
     {
         id: 'personality',
         type: 'choice',
-        question: 'How do you feel about speaking practice?',
-        subtitle: 'This helps us adjust the pace and how we correct your mistakes.',
+        eyebrow: 'Ritmo',
+        question: '¿Y hablar en inglés? ¿Cómo lo sientes?',
+        subtitle: 'Esto define qué tan rápido te empujamos a producir y cómo te corregimos.',
         options: [
-            { value: 'extrovert', label: 'Dive right in', icon: '🗣️', desc: 'I love talking right away, even with mistakes.' },
-            { value: 'ambivert', label: 'Step by step', icon: '⚖️', desc: 'I like guided practice before free-talking.' },
-            { value: 'introvert', label: 'Prepare first', icon: '🕵️', desc: 'I want to master grammar/vocab before speaking.' },
+            { value: 'extrovert', label: 'Me lanzo',    icon: '🗣️', desc: 'Hablo aunque me equivoque' },
+            { value: 'ambivert',  label: 'Paso a paso', icon: '⚖️', desc: 'Prefiero práctica guiada primero' },
+            { value: 'introvert', label: 'Me preparo',  icon: '🕵️', desc: 'Quiero entenderlo antes de hablar' },
         ],
     },
     {
         id: 'interests',
         type: 'tags',
-        question: 'What do you love talking about?',
-        subtitle: 'Select 1 or more. We will personalize your vocabulary around these topics.',
+        eyebrow: 'Gustos',
         multiple: true,
+        question: '¿De qué te gusta hablar?',
+        subtitle: 'Aquí está la magia: tus lecciones van a usar esto en los ejemplos. Pica una burbuja y aparecen más.',
     },
     {
         id: 'time_per_day',
         type: 'choice',
-        question: 'How much time can you dedicate?',
-        subtitle: "Be honest — consistency beats intensity every time.",
+        eyebrow: 'Tiempo',
+        question: '¿Cuánto tiempo al día?',
+        subtitle: 'Sé realista. La constancia le gana a la intensidad, siempre.',
         options: [
-            { value: '10_15', label: '10 – 15 min', icon: '⚡', desc: 'Quick daily sessions' },
-            { value: '20_30', label: '20 – 30 min', icon: '☕', desc: 'Focused practice' },
-            { value: '30_60', label: '30 – 60 min', icon: '🔥', desc: 'Deep learning sessions' },
-            { value: '60_plus', label: '1 + hour', icon: '🚀', desc: 'Intensive training' },
+            { value: '10_15',   label: '10 a 15 min', icon: '⚡', desc: 'Sesiones cortas diarias' },
+            { value: '20_30',   label: '20 a 30 min', icon: '☕', desc: 'Práctica enfocada' },
+            { value: '30_60',   label: '30 a 60 min', icon: '🔥', desc: 'Aprendizaje profundo' },
+            { value: '60_plus', label: 'Más de 1 h',  icon: '🚀', desc: 'Entrenamiento intensivo' },
         ],
     },
 ]
 
-// ─── Label helpers ────────────────────────────────────────────────────────────
+const MIN_INTERESTS = 3
 
-function labelFor(stepId: string, value: string | string[]): string {
+// ─── Catálogo de burbujas ─────────────────────────────────────────────────────
+
+const ROOT_CATEGORIES = ['Music', 'Movies & TV', 'Video Games', 'Sports & Fitness', 'Food & Cooking']
+
+const ROOT_LABELS: Record<string, string> = {
+    'Music':            'Música',
+    'Movies & TV':      'Cine y series',
+    'Video Games':      'Videojuegos',
+    'Sports & Fitness': 'Deporte',
+    'Food & Cooking':   'Comida',
+}
+
+const ROOT_ICONS: Record<string, string> = {
+    'Music':            '🎵',
+    'Movies & TV':      '🎬',
+    'Video Games':      '🎮',
+    'Sports & Fitness': '⚽',
+    'Food & Cooking':   '🍳',
+}
+
+const GENRE_CATEGORIES = [
+    'Action', 'Sci-Fi', 'Horror', 'Comedy', 'Drama', 'Documentaries',
+    'RPG', 'Shooter', 'Adventure', 'Strategy', 'Puzzle', 'Sports',
+    'Rock', 'Pop', 'Rap & Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Latin',
+    'Football', 'Basketball', 'Tennis', 'Baseball', 'Cycling', 'Running',
+    'Chicken', 'Seafood', 'Beef', 'Pasta', 'Vegetarian', 'Dessert', 'Breakfast', 'Vegan',
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function labelFor(stepId: string, value: string | string[] | undefined): string {
     const step = STEPS.find(s => s.id === stepId)
-    if (!step) return String(value)
-
+    if (!step || value === undefined) return '—'
     if (Array.isArray(value)) {
-        return value.map(v => step.options?.find(o => o.value === v)?.label ?? v).join(', ')
+        return value.length ? value.map(v => ROOT_LABELS[v] ?? v).join(' · ') : '—'
     }
-
     return step.options?.find(o => o.value === value)?.label ?? String(value)
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function Onboarding({ user }: OnboardingProps) {
-    const [step, setStep] = useState<number>(0)
-    const [answers, setAnswers] = useState<Answers>({})
-    const [selected, setSelected] = useState<string[]>([])
-    const [submitting, setSubmitting] = useState<boolean>(false)
+    const firstName = user.name.trim().split(' ')[0]
 
-    // Estados para las burbujas dinámicas y texto personalizado
-    const [currentSubOptions, setCurrentSubOptions] = useState<{ name: string, turns: number }[]>([]);
-    const [poppingBubbles, setPoppingBubbles] = useState<string[]>([])
-    const [customTag, setCustomTag] = useState<string>('')
-    const [activeCategory, setActiveCategory] = useState<string>('');
+    const [phase, setPhase]           = useState<Phase>('welcome')
+    const [step, setStep]             = useState(0)
+    const [answers, setAnswers]       = useState<Answers>({})
+    const [submitting, setSubmitting] = useState(false)
+    const [direction, setDirection]   = useState<'fwd' | 'back'>('fwd')
 
-    const currentStep = STEPS[step]
-    const isLast = step === STEPS.length - 1
+    // Burbujas de intereses
+    const [subOptions, setSubOptions]         = useState<{ name: string; turns: number }[]>([])
+    const [popping, setPopping]               = useState<string[]>([])
+    const [loadingFor, setLoadingFor]         = useState<string | null>(null)
+    const [customTag, setCustomTag]           = useState('')
+    const [activeCategory, setActiveCategory] = useState('')
+    const [bubbleError, setBubbleError]       = useState(false)
+    const [lastBubble, setLastBubble]         = useState<string | null>(null)
 
-    const rootCategories = ['Music', 'Movies & TV', 'Video Games', 'Sports & Fitness', 'Food & Cooking'];
-    const genreCategories = [
-        // Movies & TV
-        'Action', 'Sci-Fi', 'Horror', 'Comedy', 'Drama', 'Documentaries',
-        // Video Games
-        'RPG', 'Shooter', 'Adventure', 'Strategy', 'Puzzle', 'Sports',
-        // Music
-        'Rock', 'Pop', 'Rap & Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Latin',
-        // Sports & Fitness
-        'Football', 'Basketball', 'Tennis', 'Baseball', 'Cycling', 'Running',
-        // Food & Cooking
-        'Chicken', 'Seafood', 'Beef', 'Pasta', 'Vegetarian', 'Dessert', 'Breakfast', 'Vegan',
-    ];
+    const advanceTimer = useRef<number | null>(null)
+    const currentStep  = STEPS[step]
+    const isLastStep   = step === STEPS.length - 1
 
-    const rootCategoryIcons: Record<string, string> = {
-        'Music':           '🎵',
-        'Movies & TV':     '🎬',
-        'Video Games':     '🎮',
-        'Sports & Fitness':'⚽',
-        'Food & Cooking':  '🍳',
-    };
+    // ── Persistencia: si recarga, no pierde lo que ya contestó ──
+    useEffect(() => {
+        try {
+            const raw = sessionStorage.getItem(STORAGE_KEY)
+            if (!raw) return
+            const saved = JSON.parse(raw)
+            if (saved?.answers && Object.keys(saved.answers).length) {
+                setAnswers(saved.answers)
+                setPhase(saved.phase ?? 'questions')
+                setStep(Math.min(saved.step ?? 0, STEPS.length - 1))
+            }
+        } catch { /* sessionStorage no disponible: seguimos sin restaurar */ }
+    }, [])
 
-    function isLevel3(name: string) {
-        return !rootCategories.includes(name) && !genreCategories.includes(name);
-    }
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, step, phase }))
+        } catch { /* noop */ }
+    }, [answers, step, phase])
 
+    useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current) }, [])
 
-    function selectOption(value: string) {
-        if (currentStep.multiple) {
-            setSelected(prev =>
-                prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
-            )
-        } else {
-            setSelected([value])
-        }
-    }
+    // ── Respuesta del paso actual ──
+    const currentValue = currentStep ? answers[currentStep.id] : undefined
+    const selectedList: string[] = Array.isArray(currentValue)
+        ? currentValue
+        : currentValue ? [currentValue as string] : []
 
-    function handleContinue() {
-        if (selected.length === 0 || submitting) return
+    const canContinue = selectedList.length > 0
 
-        const answerValue = currentStep.multiple ? selected : selected[0]
+    // ── Navegación ──
+    const goTo = useCallback((target: number, dir: 'fwd' | 'back' = 'fwd') => {
+        if (advanceTimer.current) clearTimeout(advanceTimer.current)
+        setDirection(dir)
+        setStep(Math.max(0, Math.min(target, STEPS.length - 1)))
+    }, [])
 
-        const newAnswers: Answers = {
-            ...answers,
-            [currentStep.id]: answerValue,
-        }
+    const next = useCallback(() => {
+        if (isLastStep) { setDirection('fwd'); setPhase('review') }
+        else goTo(step + 1, 'fwd')
+    }, [isLastStep, step, goTo])
 
-        setAnswers(newAnswers)
+    const back = useCallback(() => {
+        if (phase === 'review') { setDirection('back'); setPhase('questions'); setStep(STEPS.length - 1); return }
+        if (step === 0) { setDirection('back'); setPhase('welcome'); return }
+        goTo(step - 1, 'back')
+    }, [phase, step, goTo])
 
-        if (isLast) {
-            setSubmitting(true)
-            router.post(
-                (window as any).route('onboarding.store'),
-                newAnswers,
-                { preserveState: false }
-            )
-        } else {
-            setStep(s => s + 1)
-            setSelected([])
-        }
-    }
+    // ── Selección en tarjetas, con auto-avance (se siente fluido) ──
+    const choose = useCallback((value: string) => {
+        setAnswers(a => ({ ...a, [currentStep.id]: value }))
+        if (advanceTimer.current) clearTimeout(advanceTimer.current)
+        advanceTimer.current = window.setTimeout(() => {
+            if (isLastStep) { setDirection('fwd'); setPhase('review') }
+            else goTo(step + 1, 'fwd')
+        }, 340)
+    }, [currentStep, isLastStep, step, goTo])
 
-    function handleKeyDown(e: React.KeyboardEvent) {
-        if (e.key === 'Enter' && selected.length > 0 && !customTag) {
-            handleContinue()
-        }
-    }
+    // ── Intereses ──
+    // Actualizaciones funcionales: si el usuario pica dos burbujas rápido, no se
+    // pierde ninguna (antes se usaba el selectedList del render anterior).
+    const addInterest = (tag: string) => setAnswers(a => {
+        const cur = Array.isArray(a.interests) ? a.interests : []
+        return cur.some(t => t.toLowerCase() === tag.toLowerCase()) ? a : { ...a, interests: [...cur, tag] }
+    })
+    const removeInterest = (tag: string) => setAnswers(a => {
+        const cur = Array.isArray(a.interests) ? a.interests : []
+        return { ...a, interests: cur.filter(t => t !== tag) }
+    })
 
-    async function handleBubbleClick(item: string) {
-        setPoppingBubbles(prev => [...prev, item]);
+    const isLevel3 = (name: string) =>
+        !ROOT_CATEGORIES.includes(name) && !GENRE_CATEGORIES.includes(name)
 
-        // Actualizar contexto si es categoría raíz
-        let categoryContext = activeCategory;
-        if (rootCategories.includes(item)) {
-            categoryContext = item;
-            setActiveCategory(item);
+    async function popBubble(item: string) {
+        // Feedback inmediato: la burbuja revienta y el interés entra al inventario
+        // sin esperar la red (antes no pasaba nada visible durante segundos).
+        setPopping(p => [...p, item])
+        window.setTimeout(() => setPopping(p => p.filter(b => b !== item)), 320)
+        addInterest(item)
+        setBubbleError(false)
+        setLastBubble(item)
+        setLoadingFor(item)
+
+        let categoryContext = activeCategory
+        if (ROOT_CATEGORIES.includes(item)) {
+            categoryContext = item
+            setActiveCategory(item)
         }
 
         try {
-            const response = await axios.get((window as any).route('onboarding.interests'), {
-                params: { topic: item, category: categoryContext }
-            });
+            const res = await axios.get((window as any).route('onboarding.interests'), {
+                params: { topic: item, category: categoryContext },
+            })
+            const incoming = (res.data.topics || []).map((name: string) => ({ name, turns: 0 }))
 
-            const nuevasRecomendaciones = (response.data.topics || []).map((name: string) => ({ name, turns: 0 }));
-
-            setCurrentSubOptions(prev => {
-                const MAX_SUBS = 12;
-
-                // 1. Aumentar turnos a Nivel 3 existentes
-                let updated = prev.map(b => ({
-                    ...b,
-                    turns: isLevel3(b.name) ? b.turns + 1 : b.turns
-                }));
-
-                // 2. Borrar Nivel 3 que cumplieron 3 turnos
-                updated = updated.filter(b => !(isLevel3(b.name) && b.turns >= 3));
-
-                // 3. Añadir solo las realmente nuevas (preserva turn counts existentes)
-                const existingNames = new Set(updated.map(b => b.name));
-                const trulyNew = nuevasRecomendaciones.filter((r: { name: string; turns: number }) => !existingNames.has(r.name));
-                let result = [...updated, ...trulyNew];
-
-                // 4. Si se pasa del límite, quitar las más viejas (mayor turns) primero
-                if (result.length > MAX_SUBS) {
-                    result.sort((a, b) => b.turns - a.turns);
-                    result = result.slice(result.length - MAX_SUBS);
+            setSubOptions(prev => {
+                const MAX = 12
+                let updated = prev.map(b => ({ ...b, turns: isLevel3(b.name) ? b.turns + 1 : b.turns }))
+                updated = updated.filter(b => !(isLevel3(b.name) && b.turns >= 3))
+                const existing = new Set(updated.map(b => b.name))
+                const fresh = incoming.filter((r: { name: string }) => !existing.has(r.name))
+                let result = [...updated, ...fresh]
+                if (result.length > MAX) {
+                    result.sort((a, b) => b.turns - a.turns)
+                    result = result.slice(result.length - MAX)
                 }
+                return result
+            })
 
-                return result;
-            });
-
-            setSelected(prev => prev.includes(item) ? prev : [...prev, item]);
-        } catch (error) {
-            console.error("Error", error);
+        } catch {
+            // El interés ya quedó guardado; solo avisamos que no hubo sugerencias
+            setBubbleError(true)
+        } finally {
+            setLoadingFor(null)
         }
-
-        setPoppingBubbles(prev => prev.filter(b => b !== item));
     }
 
-    function handleCustomTagSubmit() {
-        if (!customTag.trim()) return
-
-        const newTag = customTag.trim()
-        setSelected(prev => prev.includes(newTag) ? prev : [...prev, newTag])
+    function addCustomTag() {
+        const tag = customTag.trim()
+        if (!tag) return
+        addInterest(tag)
         setCustomTag('')
-
-        // Opcional: Podrías buscar en el árbol si el custom tag casualmente coincide 
-        // con alguna llave, pero generalmente los tags custom son nodos finales.
     }
 
-    const allVisibleBubbles = [
-        ...rootCategories
-            .filter(c => !selected.includes(c))
-            .map(name => ({ name, isRoot: true })),
-        ...currentSubOptions
-            .filter(c => !selected.includes(c.name))
-            .map(c => ({ name: c.name, isRoot: false })),
-    ];
+    // ── Envío ──
+    const answeredCount = STEPS.filter(s => {
+        const v = answers[s.id]
+        return Array.isArray(v) ? v.length > 0 : Boolean(v)
+    }).length
+
+    const submit = useCallback(() => {
+        if (submitting || answeredCount < STEPS.length) return
+        setSubmitting(true)
+        const payload: Answers = {
+            ...answers,
+            interests: Array.isArray(answers.interests) ? answers.interests : [],
+        }
+        try { sessionStorage.removeItem(STORAGE_KEY) } catch { /* noop */ }
+        router.post((window as any).route('onboarding.store'), payload as any, {
+            preserveState: false,
+            onError: () => setSubmitting(false),
+        })
+    }, [submitting, answeredCount, answers])
+
+    // ── Teclado real: listener en window, no en un div sin foco ──
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            const el = e.target as HTMLElement | null
+            const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')
+
+            if (phase === 'welcome') {
+                if (e.key === 'Enter') { e.preventDefault(); setPhase('questions') }
+                return
+            }
+            if (phase === 'review') {
+                if (e.key === 'Enter')  { e.preventDefault(); submit() }
+                if (e.key === 'Escape') { e.preventDefault(); back() }
+                return
+            }
+            if (typing) return
+
+            if (e.key === 'Enter' && canContinue) { e.preventDefault(); next() }
+            if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); back() }
+
+            if (currentStep?.type === 'choice' && /^[1-9]$/.test(e.key)) {
+                const opt = currentStep.options?.[parseInt(e.key, 10) - 1]
+                if (opt) { e.preventDefault(); choose(opt.value) }
+            }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [phase, canContinue, currentStep, next, back, choose, submit])
+
+    const pct = phase === 'welcome' ? 0 : phase === 'review' ? 100 : Math.round((step / STEPS.length) * 100)
+
+    // ══════════ Pantalla de envío ══════════
+    if (submitting) {
+        return (
+            <div className="ob-root">
+                <div className="ob-building">
+                    <div className="ob-building-orb"><Sparkles size={26} /></div>
+                    <h1 className="ob-building-title">Armando tu plan, {firstName}</h1>
+                    <p className="ob-building-sub">
+                        Estamos eligiendo tus temas y preparando a Alex, tu coach, para conocerte.
+                    </p>
+                    <div className="ob-building-bar"><span /></div>
+                </div>
+            </div>
+        )
+    }
 
     return (
-        <div className="ob-root" onKeyDown={handleKeyDown}>
+        <div className="ob-root">
 
             {/* ── Header ── */}
             <header className="ob-header">
                 <div className="ob-logo">
-                    <div className="ob-logo-dot" />
-                    Capuchino
+                    <span className="ob-logo-mark">C</span>
+                    <span className="ob-logo-text">Capuchino</span>
                 </div>
-                <span className="ob-header-label">Setup — {step + 1} of {STEPS.length}</span>
+                {phase !== 'welcome' && (
+                    <span className="ob-header-label">
+                        {phase === 'review' ? 'Revisión' : `${step + 1} de ${STEPS.length}`}
+                    </span>
+                )}
             </header>
 
-            {/* ── Main ── */}
+            {/* ── Progreso con pasos navegables ── */}
+            {phase !== 'welcome' && (
+                <div className="ob-progress-wrap">
+                    <div
+                        className="ob-progress-track"
+                        role="progressbar"
+                        aria-valuenow={pct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                    >
+                        <div className="ob-progress-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="ob-progress-steps">
+                        {STEPS.map((s, i) => {
+                            const v = answers[s.id]
+                            const done = Array.isArray(v) ? v.length > 0 : Boolean(v)
+                            const active = phase === 'questions' && i === step
+                            const reachable = done || i <= step
+                            return (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    className={`ob-progress-step ${active ? 'active' : ''} ${done ? 'done' : ''}`}
+                                    disabled={!reachable}
+                                    onClick={() => { setPhase('questions'); goTo(i, i < step ? 'back' : 'fwd') }}
+                                >
+                                    {s.eyebrow}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
             <main className="ob-main">
 
-                <div className="ob-progress" role="progressbar" aria-valuenow={step + 1} aria-valuemax={STEPS.length}>
-                    {STEPS.map((_, i) => (
-                        <div
-                            key={i}
-                            className={`ob-dot ${i < step ? 'done' : ''} ${i === step ? 'active' : ''}`}
-                            aria-label={`Step ${i + 1}`}
-                        />
-                    ))}
-                </div>
+                {/* ══════════ BIENVENIDA ══════════ */}
+                {phase === 'welcome' && (
+                    <div className="ob-welcome ob-anim-in">
+                        <p className="ob-welcome-eyebrow">Bienvenido a Capuchino</p>
+                        <h1 className="ob-welcome-title">Hola, <em>{firstName}</em></h1>
+                        <p className="ob-welcome-lede">
+                            No vas a estudiar un curso genérico. Vamos a construir <strong>tu</strong> plan,
+                            con ejemplos sacados de lo que de verdad te interesa.
+                        </p>
 
-                <div key={step} className="ob-step animate-fade-in">
-                    <h1 className="ob-question">{currentStep.question}</h1>
-                    <p className="ob-subtitle">{currentStep.subtitle}</p>
-
-                    {/* ── RENDERIZADO CONDICIONAL ── */}
-                    {currentStep.type === 'tags' ? (
-
-                        <div className="ob-bubbles-ui">
-
-                            <div className="ob-bubbles-container">
-                                {allVisibleBubbles.length === 0 ? (
-                                    <p className="ob-bubbles-empty">Type a topic below or click continue.</p>
-                                ) : (
-                                    allVisibleBubbles.map((bubble, index) => (
-                                        <div
-                                            key={bubble.name}
-                                            className={`bubble ${poppingBubbles.includes(bubble.name) ? 'popping' : ''} ${bubble.isRoot ? 'bubble-root' : ''}`}
-                                            style={{ animationDelay: poppingBubbles.includes(bubble.name) ? '0s' : `${index * 0.05}s` }}
-                                            onClick={() => handleBubbleClick(bubble.name)}
-                                        >
-                                            {bubble.isRoot && rootCategoryIcons[bubble.name] && (
-                                                <span className="bubble-icon">{rootCategoryIcons[bubble.name]}</span>
-                                            )}
-                                            {bubble.name}
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            {/* Input para agregar temas manuales */}
-                            <div className="ob-custom-row">
-                                <input
-                                    type="text"
-                                    value={customTag}
-                                    onChange={(e) => setCustomTag(e.target.value)}
-                                    placeholder="Don't see it? Type your own…"
-                                    className="ob-custom-input"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault()
-                                            handleCustomTagSubmit()
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={handleCustomTagSubmit}
-                                    disabled={!customTag.trim()}
-                                    className="ob-custom-btn"
-                                >
-                                    Add
-                                </button>
-                            </div>
-
-                            {/* INVENTARIO */}
-                            {selected.length > 0 && (
-                                <div className="ob-inventory">
-                                    <span className="ob-inventory-title">Your interests</span>
-                                    <div className="ob-tags-inventory">
-                                        {selected.map(tag => (
-                                            <span key={tag} className="ob-badge">
-                                                {rootCategoryIcons[tag] && <span className="ob-badge-icon">{rootCategoryIcons[tag]}</span>}
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
+                        <ul className="ob-welcome-list">
+                            <li>
+                                <span className="ob-welcome-num">1</span>
+                                <div>
+                                    <strong>7 preguntas rápidas</strong>
+                                    <span>Toma menos de un minuto.</span>
                                 </div>
-                            )}
-                        </div>
+                            </li>
+                            <li>
+                                <span className="ob-welcome-num">2</span>
+                                <div>
+                                    <strong>Una plática con Alex</strong>
+                                    <span>Tu coach mide tu nivel conversando, sin examen.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="ob-welcome-num">3</span>
+                                <div>
+                                    <strong>Tu plan listo</strong>
+                                    <span>Lecciones, vocabulario y música a tu medida.</span>
+                                </div>
+                            </li>
+                        </ul>
 
-                    ) : (
-
-                        /* INTERFAZ DE TARJETAS */
-                        <div className="ob-cards">
-                            {currentStep.options?.map(opt => {
-                                const isSelected = selected.includes(opt.value)
-
-                                return (
-                                    <div
-                                        key={opt.value}
-                                        className={`ob-card ${isSelected ? 'selected' : ''}`}
-                                        onClick={() => selectOption(opt.value)}
-                                        role="button"
-                                        aria-pressed={isSelected}
-                                        aria-label={opt.label}
-                                        tabIndex={0}
-                                        onKeyDown={e => e.key === ' ' && selectOption(opt.value)}
-                                    >
-                                        <span className="ob-card-icon" aria-hidden="true">{opt.icon}</span>
-                                        <span className="ob-card-title">{opt.label}</span>
-                                        <span className="ob-card-desc">{opt.desc}</span>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* Summary */}
-                {isLast && Object.keys(answers).length > 0 && (
-                    <div className="ob-summary mt-6" aria-label="Your selections so far">
-                        {Object.entries(answers).map(([key, val]) => (
-                            <div key={key} className="ob-summary-row flex justify-between py-2 border-b border-gray-100">
-                                <span className="ob-summary-label font-medium text-gray-600">
-                                    {STEPS.find(s => s.id === key)?.question}
-                                </span>
-                                <span className="ob-summary-value text-gray-900 text-right max-w-[50%]">
-                                    {labelFor(key, val)}
-                                </span>
-                            </div>
-                        ))}
+                        <button className="ob-btn ob-btn-primary ob-btn-lg" onClick={() => setPhase('questions')}>
+                            Empecemos <ArrowRight size={17} />
+                        </button>
+                        <p className="ob-hint">O presiona <kbd>Enter</kbd></p>
                     </div>
                 )}
 
-                {/* Actions */}
-                <div className="ob-actions mt-8 flex flex-col items-center gap-3">
-                    <button
-                        className="ob-continue-btn bg-black text-white px-8 py-3 rounded-lg font-semibold w-full md:w-auto disabled:opacity-50 transition-opacity"
-                        onClick={handleContinue}
-                        disabled={selected.length === 0 || submitting}
-                    >
-                        {submitting
-                            ? 'Setting up your plan...'
-                            : isLast
-                                ? `Start your assessment, ${user.name} →`
-                                : 'Continue'}
-                    </button>
+                {/* ══════════ PREGUNTAS ══════════ */}
+                {phase === 'questions' && currentStep && (
+                    <div key={step} className={`ob-step ${direction === 'fwd' ? 'ob-anim-in' : 'ob-anim-in-back'}`}>
+                        <p className="ob-step-eyebrow">{currentStep.eyebrow}</p>
+                        <h1 className="ob-question">{currentStep.question}</h1>
+                        <p className="ob-subtitle">{currentStep.subtitle}</p>
 
-                    <p className="ob-step-hint text-sm text-gray-400">
-                        {selected.length > 0 ? 'Press Enter to continue' : 'Select an option to continue'}
-                    </p>
-                </div>
+                        {currentStep.type === 'tags' ? (
+                            <div className="ob-bubbles-ui">
+                                <div className="ob-bubbles-container">
+                                    {(() => {
+                                        // Mantenemos visible la burbuja que está reventando
+                                        // para que su animación se complete.
+                                        const keep = (n: string) => !selectedList.includes(n) || popping.includes(n)
+                                        const visible = [
+                                            ...ROOT_CATEGORIES
+                                                .filter(keep)
+                                                .map(name => ({ name, isRoot: true })),
+                                            ...subOptions
+                                                .filter(c => keep(c.name))
+                                                .map(c => ({ name: c.name, isRoot: false })),
+                                        ]
+                                        if (!visible.length && !loadingFor) {
+                                            return (
+                                                <div className="ob-bubbles-empty">
+                                                    <p>Ya elegiste todo lo que te mostramos.</p>
+                                                    <button
+                                                        className="ob-btn ob-btn-ghost ob-btn-sm"
+                                                        onClick={() => lastBubble && popBubble(lastBubble)}
+                                                    >
+                                                        <RotateCcw size={14} /> Traer más ideas
+                                                    </button>
+                                                </div>
+                                            )
+                                        }
+                                        return <>
+                                            {visible.map((b, i) => (
+                                            <button
+                                                type="button"
+                                                key={b.name}
+                                                className={`bubble ${popping.includes(b.name) ? 'popping' : ''} ${b.isRoot ? 'bubble-root' : ''}`}
+                                                style={{ animationDelay: popping.includes(b.name) ? '0s' : `${i * 0.04}s` }}
+                                                onClick={() => popBubble(b.name)}
+                                                aria-label={`Agregar ${ROOT_LABELS[b.name] ?? b.name}`}
+                                            >
+                                                {b.isRoot && ROOT_ICONS[b.name] && (
+                                                    <span className="bubble-icon">{ROOT_ICONS[b.name]}</span>
+                                                )}
+                                                {ROOT_LABELS[b.name] ?? b.name}
+                                            </button>
+                                            ))}
+                                            {loadingFor && [0, 1, 2, 3].map(i => (
+                                                <span
+                                                    key={`sk-${i}`}
+                                                    className="bubble-skeleton"
+                                                    style={{ width: 84 + (i % 3) * 28, animationDelay: `${i * 0.12}s` }}
+                                                    aria-hidden="true"
+                                                />
+                                            ))}
+                                        </>
+                                    })()}
+                                </div>
 
+                                {loadingFor && (
+                                    <p className="ob-bubbles-loading" aria-live="polite">
+                                        <span className="ob-spinner" aria-hidden="true" />
+                                        Buscando más temas como <strong>{ROOT_LABELS[loadingFor] ?? loadingFor}</strong>…
+                                    </p>
+                                )}
+
+                                {bubbleError && (
+                                    <p className="ob-bubble-error">
+                                        No pudimos traer más ideas ahora. Tu selección se guardó; puedes escribir tus temas abajo.
+                                    </p>
+                                )}
+
+                                <div className="ob-custom-row">
+                                    <input
+                                        type="text"
+                                        value={customTag}
+                                        onChange={e => setCustomTag(e.target.value)}
+                                        placeholder="¿No lo ves? Escríbelo tú…"
+                                        className="ob-custom-input"
+                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag() } }}
+                                        aria-label="Agregar un interés propio"
+                                    />
+                                    <button className="ob-custom-btn" onClick={addCustomTag} disabled={!customTag.trim()}>
+                                        <Plus size={15} /> Agregar
+                                    </button>
+                                </div>
+
+                                <div className="ob-inventory">
+                                    <div className="ob-inventory-head">
+                                        <span className="ob-inventory-title">Tus intereses</span>
+                                        <span className={`ob-inventory-count ${selectedList.length >= MIN_INTERESTS ? 'ok' : ''}`}>
+                                            {selectedList.length === 0
+                                                ? `Elige al menos ${MIN_INTERESTS}`
+                                                : selectedList.length < MIN_INTERESTS
+                                                    ? `${selectedList.length} de ${MIN_INTERESTS} recomendados`
+                                                    : `${selectedList.length} seleccionados`}
+                                        </span>
+                                    </div>
+                                    {selectedList.length === 0 ? (
+                                        <p className="ob-inventory-empty">Pica una burbuja para empezar.</p>
+                                    ) : (
+                                        <div className="ob-tags-inventory">
+                                            {selectedList.map(tag => (
+                                                <span key={tag} className="ob-badge">
+                                                    {ROOT_ICONS[tag] && <span className="ob-badge-icon">{ROOT_ICONS[tag]}</span>}
+                                                    {ROOT_LABELS[tag] ?? tag}
+                                                    <button
+                                                        className="ob-badge-remove"
+                                                        onClick={() => removeInterest(tag)}
+                                                        aria-label={`Quitar ${ROOT_LABELS[tag] ?? tag}`}
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="ob-cards">
+                                {currentStep.options?.map((opt, i) => {
+                                    const isSel = selectedList.includes(opt.value)
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={opt.value}
+                                            className={`ob-card ${isSel ? 'selected' : ''}`}
+                                            onClick={() => choose(opt.value)}
+                                            aria-pressed={isSel}
+                                        >
+                                            <span className="ob-card-key" aria-hidden="true">{i + 1}</span>
+                                            <span className="ob-card-icon" aria-hidden="true">{opt.icon}</span>
+                                            <span className="ob-card-title">{opt.label}</span>
+                                            <span className="ob-card-desc">{opt.desc}</span>
+                                            {isSel && <span className="ob-card-check"><Check size={13} /></span>}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        <div className="ob-actions">
+                            <button className="ob-btn ob-btn-ghost" onClick={back}>
+                                <ArrowLeft size={16} /> Atrás
+                            </button>
+                            <button className="ob-btn ob-btn-primary" onClick={next} disabled={!canContinue}>
+                                {isLastStep ? 'Revisar' : 'Continuar'} <ArrowRight size={16} />
+                            </button>
+                        </div>
+                        <p className="ob-hint">
+                            {currentStep.type === 'choice'
+                                ? <>Usa las teclas <kbd>1</kbd>–<kbd>{currentStep.options?.length ?? 4}</kbd>, o <kbd>Esc</kbd> para volver</>
+                                : <>Presiona <kbd>Enter</kbd> para continuar</>}
+                        </p>
+                    </div>
+                )}
+
+                {/* ══════════ RESUMEN EDITABLE ══════════ */}
+                {phase === 'review' && (
+                    <div className="ob-step ob-anim-in">
+                        <p className="ob-step-eyebrow">Último paso</p>
+                        <h1 className="ob-question">Esto es lo que entendimos</h1>
+                        <p className="ob-subtitle">
+                            Toca cualquier línea para corregirla. Con esto Alex te conoce antes de hablar contigo.
+                        </p>
+
+                        <div className="ob-review">
+                            {STEPS.map((s, i) => {
+                                const v = answers[s.id]
+                                const empty = Array.isArray(v) ? !v.length : !v
+                                return (
+                                    <button
+                                        key={s.id}
+                                        type="button"
+                                        className={`ob-review-row ${empty ? 'empty' : ''}`}
+                                        onClick={() => { setPhase('questions'); goTo(i, 'back') }}
+                                    >
+                                        <span className="ob-review-label">{s.eyebrow}</span>
+                                        <span className="ob-review-value">{empty ? 'Sin responder' : labelFor(s.id, v)}</span>
+                                        <span className="ob-review-edit"><Pencil size={13} /></span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        <div className="ob-actions">
+                            <button className="ob-btn ob-btn-ghost" onClick={back}>
+                                <ArrowLeft size={16} /> Atrás
+                            </button>
+                            <button
+                                className="ob-btn ob-btn-primary"
+                                onClick={submit}
+                                disabled={answeredCount < STEPS.length}
+                            >
+                                Conocer a Alex <ArrowRight size={16} />
+                            </button>
+                        </div>
+                        <p className="ob-hint">
+                            {answeredCount < STEPS.length
+                                ? 'Completa las respuestas que faltan para continuar'
+                                : <>Presiona <kbd>Enter</kbd> para empezar tu evaluación</>}
+                        </p>
+                    </div>
+                )}
             </main>
         </div>
     )

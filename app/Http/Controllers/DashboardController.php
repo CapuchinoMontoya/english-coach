@@ -52,6 +52,7 @@ class DashboardController extends Controller
 
         $completedTopics = $user->topicProgress()
             ->where('status', 'completed')
+            ->whereHas('topic', fn ($q) => $q->where('level_from', $realLevel)->where('level_to', $targetLevel))
             ->count();
 
         return Inertia::render('dashboard', [

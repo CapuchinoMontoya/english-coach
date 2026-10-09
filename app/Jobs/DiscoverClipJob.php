@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Services\Listening\ClipActivityService;
 use Illuminate\Bus\Queueable;
@@ -20,10 +21,14 @@ class DiscoverClipJob implements ShouldQueue
 
     public function handle(ClipActivityService $service): void
     {
+        try {
         $user = User::query()->find($this->userId);
         if (! $user) return;
 
         // Descubre (IA + YouTube + captions) y guarda en el catálogo para la próxima vez
         $service->getActivityFor($user);
+        } catch (\Throwable $e) {
+            Log::warning(static::class . ' falló: ' . $e->getMessage());
+        }
     }
 }

@@ -47,6 +47,17 @@ declare global {
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/[.,!?;:"']/g, '')
 
+// Apaga los subtítulos del reproductor (revelarían la respuesta). Se cubren los
+// dos nombres de módulo que usa YouTube (HTML5 'captions' y legacy 'cc').
+function disableCaptions(player: any) {
+    try {
+        player?.unloadModule?.('captions')
+        player?.unloadModule?.('cc')
+        player?.setOption?.('captions', 'track', {})
+        player?.setOption?.('cc', 'track', {})
+    } catch { /* noop */ }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ListeningGame({
@@ -63,14 +74,15 @@ export default function ListeningGame({
     const [penalties,  setPenalties]  = useState<Record<number, boolean>>({})
     const [missedLine, setMissedLine] = useState<number | null>(null)
 
-    const playerRef    = useRef<any>(null)
-    const pollRef      = useRef<number | null>(null)
-    const scrollRef    = useRef<HTMLDivElement>(null)
-    const lyricsRef    = useRef<HTMLDivElement>(null)
-    const lineRefs     = useRef<(HTMLDivElement | null)[]>([])
-    const answersRef   = useRef(answers)
-    const statusesRef  = useRef(statuses)
-    const penaltiesRef = useRef(penalties)
+    const playerRef     = useRef<any>(null)
+    const pollRef       = useRef<number | null>(null)
+    const scrollRef     = useRef<HTMLDivElement>(null)
+    const lyricsRef     = useRef<HTMLDivElement>(null)
+    const lineRefs      = useRef<(HTMLDivElement | null)[]>([])
+    const answersRef    = useRef(answers)
+    const statusesRef   = useRef(statuses)
+    const penaltiesRef  = useRef(penalties)
+    const activeLineRef = useRef(0)   // evita re-renders redundantes en el loop
 
     answersRef.current   = answers
     statusesRef.current  = statuses
@@ -104,7 +116,12 @@ export default function ListeningGame({
                     fs: 0,                  // sin fullscreen
                 },
                 events: {
-                    onReady:       () => setState('ready'),
+                    onReady: (e: any) => {
+                        disableCaptions(e.target)
+                        setState('ready')
+                    },
+                    // Los módulos (incl. subtítulos) terminan de cargar aquí → forzar CC off
+                    onApiChange: (e: any) => disableCaptions(e.target),
                     onStateChange: (e: any) => { if (e.data === 0) finishGame() },
                 },
             })
@@ -135,7 +152,10 @@ export default function ListeningGame({
                 const next = song.lines[i + 1]
                 return t >= l.time && (!next || t < next.time)
             })
-            if (idx !== -1 && idx !== activeLine) setActiveLine(idx)
+            if (idx !== -1 && idx !== activeLineRef.current) {
+                activeLineRef.current = idx
+                setActiveLine(idx)
+            }
 
             for (let i = 0; i < song.lines.length; i++) {
                 const line = song.lines[i]
@@ -156,7 +176,16 @@ export default function ListeningGame({
                 }
             }
         }, 100)
-    }, [song.lines, activeLine, graceSecs])
+    }, [song.lines, graceSecs])
+
+    // Reproduce asegurando audio (controls:0 puede dejar el video en mute)
+    const playWithSound = useCallback(() => {
+        const p = playerRef.current
+        if (!p) return
+        try { p.unMute?.(); p.setVolume?.(100) } catch { /* noop */ }
+        disableCaptions(p)
+        p.playVideo?.()
+    }, [])
 
     // ── Centrado medido: la línea activa siempre al centro, sin importar saltos ─
     // Mide la posición real del elemento (soporta líneas que ocupan 1 o 2 renglones)
@@ -190,7 +219,7 @@ export default function ListeningGame({
     // ── Controles ──────────────────────────────────────────────────────────────
     function startGame() {
         setState('playing')
-        playerRef.current?.playVideo()
+        playWithSound()
         startLoop()
     }
 
@@ -206,8 +235,9 @@ export default function ListeningGame({
         setMissedLine(null)
         setState('playing')
 
+        activeLineRef.current = missedLine   // resincroniza el guard del loop tras el salto
         playerRef.current?.seekTo(target, true)
-        playerRef.current?.playVideo()
+        playWithSound()
         startLoop()
     }
 
@@ -215,7 +245,7 @@ export default function ListeningGame({
         if (missedLine !== null) setStatuses(s => ({ ...s, [missedLine]: 'missed' }))
         setMissedLine(null)
         setState('playing')
-        playerRef.current?.playVideo()
+        playWithSound()
         startLoop()
     }
 

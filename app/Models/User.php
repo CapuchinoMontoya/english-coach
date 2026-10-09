@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Facades\Log;
 use App\Notifications\VerifyEmailCapuchino;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,12 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailCapuchino);
+        try {
+            $this->notify(new VerifyEmailCapuchino);
+        } catch (\Throwable $e) {
+            // No romper el registro por un fallo de SMTP: el usuario puede reenviar el correo
+            Log::error('No se pudo enviar verificación a ' . $this->email . ': ' . $e->getMessage());
+        }
     }
 
     /**

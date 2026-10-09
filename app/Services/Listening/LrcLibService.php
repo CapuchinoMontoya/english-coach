@@ -35,18 +35,64 @@ class LrcLibService
      */
     public function search(string $artist, string $track): ?array
     {
-        $res = Http::timeout(10)
+        return $this->searchQuery("{$artist} {$track}");
+    }
+
+    /**
+     * Búsqueda libre por texto (ej. "Closed On Sunday" o "Kanye Closed On Sunday").
+     * Devuelve el primer resultado con letra sincronizada, con sus metadatos.
+     */
+    // Versiones que NO son la grabación de estudio original
+    private const NON_STUDIO = [
+        'live', 'cover', 'remix', 'instrumental', 'karaoke', 'acoustic',
+        'sped up', 'sped-up', '8d', 'nightcore', 'slowed', 'a cappella',
+        'acapella', 'reprise', 'demo', 'remaster', 'tribute',
+    ];
+
+    public function searchQuery(string $query): ?array
+    {
+        $res = Http::timeout(12)
             ->withHeaders(['User-Agent' => 'Capuchino/1.0 (English learning app)'])
-            ->get(self::BASE . '/search', ['q' => "{$artist} {$track}"]);
+            ->get(self::BASE . '/search', ['q' => $query]);
 
         if (! $res->ok()) return null;
 
-        foreach ($res->json() as $item) {
-            if (! empty($item['syncedLyrics'])) {
-                return $this->shape($item);
+        $synced = collect($res->json())
+            ->filter(fn ($i) => ! empty($i['syncedLyrics']))
+            ->values();
+
+        if ($synced->isEmpty()) return null;
+
+        // Cuenta versiones ~iguales: la que más se repite suele ser la canónica/popular
+        $countByKey = [];
+        foreach ($synced as $i) {
+            $k = $this->versionKey($i);
+            $countByKey[$k] = ($countByKey[$k] ?? 0) + 1;
+        }
+
+        // Puntúa respetando el orden de relevancia de LRCLIB y castigando no-estudio
+        $best = null;
+        $bestScore = -INF;
+        foreach ($synced as $idx => $i) {
+            $track = mb_strtolower($i['trackName'] ?? '');
+            $score = 100 - $idx * 3;
+            foreach (self::NON_STUDIO as $bad) {
+                if (str_contains($track, $bad)) { $score -= 200; break; }
+            }
+            $score += (($countByKey[$this->versionKey($i)] ?? 1) - 1) * 12;
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $i;
             }
         }
-        return null;
+
+        return $this->shape($best);
+    }
+
+    private function versionKey(array $item): string
+    {
+        return mb_strtolower(($item['trackName'] ?? '')) . '|' . round(($item['duration'] ?? 0) / 3);
     }
 
     /**
@@ -56,11 +102,36 @@ class LrcLibService
     {
         if (empty($data) || empty($data['syncedLyrics'])) return null;
 
+        $artist = trim($data['artistName'] ?? '');
+
         return [
             'lrclib_id'     => $data['id'] ?? null,
+            'artist'        => $artist,
+            'title'         => $this->cleanTitle($data['trackName'] ?? '', $artist),
             'duration'      => (int) round($data['duration'] ?? 0),
             'synced_lyrics' => $this->parseLrc($data['syncedLyrics']),
         ];
+    }
+
+    /** Limpia "Kanye West - Closed On Sunday (Official Video)" → "Closed On Sunday". */
+    private function cleanTitle(string $raw, string $artist): string
+    {
+        $t = trim($raw);
+
+        // Quita el prefijo "Artista - "
+        if ($artist !== '' && stripos($t, $artist . ' -') === 0) {
+            $t = trim(substr($t, strlen($artist) + 2));
+        }
+
+        // Quita sufijos entre paréntesis/corchetes tipo (Official Video), [Audio], (HD)…
+        $t = preg_replace(
+            '/\s*[\(\[](?:official|lyric|lyrics|audio|video|music video|hd|4k|mv|explicit|visualizer)[^\)\]]*[\)\]]/iu',
+            '',
+            $t
+        );
+
+        $t = trim($t);
+        return $t !== '' ? $t : trim($raw);
     }
 
     /**

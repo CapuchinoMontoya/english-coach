@@ -52,6 +52,37 @@ class ListeningController extends Controller
         return Inertia::render('listening/index', ['songs' => $list]);
     }
 
+    // Buscar en YouTube + LRCLIB y agregar la canción al catálogo (ilimitadas)
+    public function search(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'query' => ['required', 'string', 'min:2', 'max:120'],
+        ]);
+
+        $result = $this->listening->createFromSearch($request->user(), trim($data['query']));
+
+        if (in_array($result['status'], ['created', 'exists'], true)) {
+            return response()->json([
+                'ok'          => true,
+                'status'      => $result['status'],
+                'activity_id' => $result['activity']->id,
+                'title'       => $result['activity']->title,
+                'artist'      => $result['activity']->artist,
+            ]);
+        }
+
+        $messages = [
+            'no_lyrics' => 'No encontramos la letra sincronizada de esa canción. Prueba escribiendo "Artista - Título".',
+            'no_video'  => 'Encontramos la letra, pero no un audio oficial que sincronice bien. Intenta con otra canción.',
+        ];
+
+        return response()->json([
+            'ok'      => false,
+            'status'  => $result['status'],
+            'message' => $messages[$result['status']] ?? 'No se pudo agregar la canción.',
+        ], 422);
+    }
+
     // Jugar una actividad — el contenido se sirve según el nivel del usuario
     public function show(Request $request, int $id): Response
     {

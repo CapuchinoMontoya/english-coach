@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php -l app/Http/Controllers/PlacementController.php)"
+      "Bash(php -l app/Http/Controllers/PlacementController.php)",
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $a=require '\\\\''bootstrap/app.php'\\\\''; $a->make\\(Illuminate\\\\Contracts\\\\Console\\\\Kernel::class\\)->bootstrap\\(\\); echo '\\\\''key len: '\\\\''.strlen\\(\\(string\\)config\\('\\\\''services.youtube.key'\\\\''\\)\\).PHP_EOL;')",
+      "Bash(php -l app/Console/Commands/RematchSongs.php)",
+      "Bash(php -l app/Services/Listening/YouTubeFinderService.php)",
+      "Bash(curl -s -m 20 -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" \"https://lrclib.net/api/get?artist_name=Joji&track_name=Die%20For%20You\")",
+      "Bash(curl -s -m 20 -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" \"https://www.googleapis.com/youtube/v3/videos?part=id&id=dQw4w9WgXcQ&key=x\")",
+      "Bash(php tmp_check.php)",
+      "Bash(php tmp_final.php)",
+      "Bash(php tmp_state.php)",
+      "Bash(php -l app/Services/Listening/ListeningActivityService.php)",
+      "Bash(php -l app/Services/Listening/LrcLibService.php)",
+      "Bash(php -l app/Http/Controllers/ListeningController.php)",
+      "Bash(php tmp_search.php)"
     ]
   }
 }

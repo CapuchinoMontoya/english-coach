@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/Alert';
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { AUTH_STRINGS, intlTag, useLocale } from '@/lib/auth-i18n';
 
 interface Meaning {
     type: string;
@@ -39,6 +41,8 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
     });
 
     const [showPassword, setShowPassword] = useState(false);
+    const [locale, setLocale] = useLocale();
+    const t = AUTH_STRINGS[locale];
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -47,11 +51,11 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
         });
     };
 
-    const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+    const dayOfWeek = new Date().toLocaleDateString(intlTag(locale), { weekday: 'short' });
 
     return (
         <>
-            <Head title="Log in" />
+            <Head title={t.headTitle} />
             <style dangerouslySetInnerHTML={{
                 __html: `
                 html, body { height: 100%; }
@@ -333,6 +337,32 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     0% { transform: scale(0.6); opacity: 0.6; }
                     100% { transform: scale(1.8); opacity: 0; }
                 }
+                /* Selector de idioma */
+                .lang-toggle {
+                    display: inline-flex; align-items: center; gap: 2px;
+                    padding: 2px;
+                    border: 1px solid var(--line);
+                    border-radius: var(--r-pill);
+                    background: var(--bg-elevated);
+                }
+                .lang-opt {
+                    display: inline-flex; align-items: center; gap: 6px;
+                    padding: 4px 10px;
+                    border: none; background: transparent;
+                    border-radius: var(--r-pill);
+                    cursor: pointer; font: inherit; line-height: 1;
+                    font-size: var(--fs-12); font-weight: 500;
+                    color: var(--ink-subtle);
+                    transition: background .15s, color .15s;
+                }
+                .lang-opt:hover { color: var(--ink); background: var(--bg-sunken); }
+                .lang-opt.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+                .lang-opt .lang-flag { display: block; flex-shrink: 0; }
+                .lang-opt .lang-code { font-family: var(--font-mono); letter-spacing: .04em; }
+                .lang-opt .lang-name { display: none; }
+                .lang-opt.active .lang-name { display: inline; }
+                .lang-opt.active .lang-name::before { content: '·'; margin-right: 6px; opacity: .55; }
+                @media (max-width: 420px) { .lang-opt.active .lang-name { display: none; } }
             `}} />
 
             <div className="auth">
@@ -347,26 +377,26 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     </div>
 
                     <div className="brand-stamp" aria-hidden="true">
-                        <span>Daily</span>
-                        <span className="big">ritual</span>
-                        <span>Est. {new Date().getFullYear()}</span>
+                        <span>{t.stampSmall}</span>
+                        <span className="big">{t.stampBig}</span>
+                        <span>{t.stampEst} {new Date().getFullYear()}</span>
                     </div>
 
                     <div className="brand-quote">
                         <span className="mark" aria-hidden="true">“</span>
-                        <p className="words">A new word, served warm every morning.</p>
+                        <p className="words">{t.quote}</p>
                         <span className="mark" aria-hidden="true">”</span>
-                        <div className="attrib">The Capuchino promise</div>
+                        <div className="attrib">{t.quoteAttrib}</div>
                     </div>
 
-                    <div className="word-card" aria-label="Today's word">
+                    <div className="word-card" aria-label={t.todaysWord}>
                         <span
                             className={`level ${wordOfTheDay.level.toLowerCase()} lvl`}
                             style={{ fontWeight: 600 }}
                         >
                             {wordOfTheDay.level}
                         </span>
-                        <div className="label">Word of the day · {dayOfWeek}</div>
+                        <div className="label">{t.wordOfDay} · {dayOfWeek}</div>
                         <div className="word">{wordOfTheDay.word}</div>
                         <div className="pron">{wordOfTheDay.pronunciation}</div>
                         <div className="meanings-container mt-3">
@@ -386,9 +416,9 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     <div className="brand-foot">
                         <span>© 2026 Capuchino Co.</span>
                         <div className="row">
-                            <a href="#">Privacy</a>
-                            <a href="#">Terms</a>
-                            <a href="#">Help</a>
+                            <a href="#">{t.privacy}</a>
+                            <a href="#">{t.terms}</a>
+                            <a href="#">{t.help}</a>
                         </div>
                     </div>
                 </aside>
@@ -400,20 +430,20 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     <div className="form-top">
                         <span className="availability">
                             <span className="pulse"></span>
-                            All systems warm
+                            {t.systemsWarm}
                         </span>
                         <div className="row" style={{ gap: 'var(--s-3)', display: 'flex', alignItems: 'center' }}>
-                            <span className="ink-subtle small" style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)' }}>New here?</span>
+                            <span className="ink-subtle small" style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)' }}>{t.newHere}</span>
                             <Link href={route('register')}>
-                                <Button variant="secondary" size="sm">Create account</Button>
+                                <Button variant="secondary" size="sm">{t.createAccount}</Button>
                             </Link>
                         </div>
                     </div>
 
                     <div className="form-shell">
-                        <span className="eyebrow"><span className="pip"></span>Welcome back</span>
-                        <h1 className="display">Log in to your <em style={{ color: 'var(--accent)' }}>cup</em>.</h1>
-                        <p className="sub">Pick up where you left off — your streak, your words, your lessons. We saved them all.</p>
+                        <span className="eyebrow"><span className="pip"></span>{t.welcomeBack}</span>
+                        <h1 className="display">{t.titlePre}<em style={{ color: 'var(--accent)' }}>{t.titleEm}</em>{t.titlePost}</h1>
+                        <p className="sub">{t.sub}</p>
 
                         {status && (
                             <Alert className="mb-3 mt-4">
@@ -424,18 +454,18 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                         <div className="social-row">
                             <a href="/auth/google" className="w-full" style={{ display: 'contents' }}>
                                 <Button variant="secondary" type="button" className="w-full">
-                                    <GoogleIcon /> Continue with Google
+                                    <GoogleIcon /> {t.continueGoogle}
                                 </Button>
                             </a>
                             <Button variant="secondary" type="button" className="w-full" disabled>
-                                <AppleIcon /> Continue with Apple
+                                <AppleIcon /> {t.continueApple}
                             </Button>
                         </div>
 
-                        <div className="divider">or sign in with email</div>
+                        <div className="divider">{t.orEmail}</div>
 
                         <form className="login" onSubmit={submit}>
-                            <Field label="Email address" htmlFor="email" error={errors.email}>
+                            <Field label={t.emailLabel} htmlFor="email" error={errors.email}>
                                 <Input
                                     id="email"
                                     type="email"
@@ -443,7 +473,7 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="email"
-                                    placeholder="you@example.com"
+                                    placeholder={t.emailPlaceholder}
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                     invalid={!!errors.email}
@@ -455,10 +485,10 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                                 error={errors.password}
                                 label={
                                     <span className="row-between">
-                                        <span>Password</span>
+                                        <span>{t.passwordLabel}</span>
                                         {canResetPassword && (
                                             <a href={route('password.request')} tabIndex={5}>
-                                                Forgot it?
+                                                {t.forgot}
                                             </a>
                                         )}
                                     </span>
@@ -481,7 +511,7 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                                         type="button"
                                         className="reveal"
                                         onClick={() => setShowPassword((v) => !v)}
-                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        aria-label={showPassword ? t.hidePassword : t.showPassword}
                                     >
                                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
@@ -494,7 +524,7 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                                 checked={data.remember}
                                 onChange={(e) => setData('remember', e.target.checked)}
                             >
-                                Keep me signed in on this device
+                                {t.remember}
                             </Checkbox>
 
                             <div className="submit-row">
@@ -512,22 +542,20 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                                         )
                                     }
                                 >
-                                    Log in
+                                    {t.logIn}
                                 </Button>
                             </div>
                         </form>
 
                         <p className="signup-line">
-                            New to Capuchino?{' '}
-                            <Link href={route('register')}>Brew your first cup →</Link>
+                            {t.newToCapuchino}{' '}
+                            <Link href={route('register')}>{t.brewFirst}</Link>
                         </p>
                     </div>
 
                     <div className="form-foot">
                         <span>v1.0</span>
-                        <div className="row">
-                            <a href="#">EN · English</a>
-                        </div>
+                        <LanguageToggle locale={locale} onChange={setLocale} label={t.languageLabel} />
                     </div>
                 </section>
             </div>

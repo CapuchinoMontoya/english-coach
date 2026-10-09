@@ -23,46 +23,129 @@ class YouTubeFinderService
      *
      * Devuelve ['video_id' => ..., 'offset' => 0] o null.
      */
+    // Palabras que rompen la sincronía o no son la versión original de estudio:
+    // lyrics/covers/versiones alteradas Y reuploads de fans con letra/subtítulos/traducción.
+    public const BAD_KEYWORDS = [
+        'lyric', 'cover', 'live', 'remix', 'sped up', 'sped-up', 'spedup', '8d',
+        'nightcore', 'instrumental', 'karaoke', 'slowed', 'reverb', 'mashup',
+        'tribute', 'parody', 'reaction', 'acoustic', 'remaster live', 'concert',
+        // subtítulos / traducciones / letra (fan reuploads)
+        'subtitul', 'subtítul', 'sub esp', 'subtitle', 'letra', 'letras',
+        'traducid', 'traduc', 'traducci', 'español', 'espanol', 'legendado',
+        'vietsub', 'subs', 'sub español', 'en español',
+    ];
+
     public function findBestMatch(string $artist, string $track, int $targetDuration): ?array
     {
         if (! $this->apiKey) return null;
 
-        // 1. Buscar candidatos. El query con "topic" tiende a traer el audio oficial.
-        $candidates = $this->searchVideos("{$artist} {$track}");
-        if (empty($candidates)) return null;
+        // Pass 1: búsqueda directa
+        $scored = $this->scoreSearch("{$artist} {$track}", $artist, $track, $targetDuration);
 
-        // 2. Traer detalles (duración, embeddable) en una sola llamada
-        $details = $this->videoDetails(array_column($candidates, 'video_id'));
+        // Si no apareció un candidato "fuerte" (Topic o audio oficial), busca enfocado al audio
+        $hasStrong = false;
+        foreach ($scored as $c) if ($c['strong']) { $hasStrong = true; break; }
+        if (! $hasStrong) {
+            $more   = $this->scoreSearch("{$artist} {$track} official audio", $artist, $track, $targetDuration);
+            $scored = array_merge($scored, $more);
+        }
 
-        // 3. Puntuar y elegir
-        $best = null;
-        $bestScore = -INF;
+        if (empty($scored)) return null;
 
+        usort($scored, fn ($a, $b) => $b['score'] <=> $a['score']);
+        return ['video_id' => $scored[0]['video_id'], 'offset' => 0];
+    }
+
+    /** Busca y puntúa candidatos de audio para una consulta. */
+    private function scoreSearch(string $query, string $artist, string $track, int $targetDuration): array
+    {
+        $candidates = $this->searchVideos($query, 15);
+        if (empty($candidates)) return [];
+
+        $details   = $this->videoDetails(array_column($candidates, 'video_id'));
+        $artistKey = $this->key($artist);
+        $trackKey  = $this->key($track);
+
+        $out = [];
         foreach ($candidates as $c) {
             $d = $details[$c['video_id']] ?? null;
             if (! $d || ! $d['embeddable']) continue;
 
-            $durationDiff = abs($d['duration'] - $targetDuration);
-            if ($durationDiff > 3) continue; // la letra no sincronizaría
+            // Sincronía estricta: la letra es relativa al audio de estudio
+            $durDiff = abs($d['duration'] - $targetDuration);
+            if ($durDiff > 2) continue;
 
-            $title   = mb_strtolower($c['title']);
-            $channel = mb_strtolower($c['channel']);
+            $title = mb_strtolower($c['title']);
+            $chan  = mb_strtolower($c['channel']);
 
-            // Penaliza videos de "lyrics" (muestran la respuesta) y prioriza Topic/oficial
-            $score = 100 - $durationDiff * 5;
-            if (str_contains($channel, '- topic')) $score += 50;        // audio oficial
-            if (str_contains($title, 'official audio')) $score += 30;
-            if (str_contains($title, 'lyric')) $score -= 200;            // descarta lyrics videos
-            if (str_contains($title, 'live') || str_contains($title, 'remix')) $score -= 40;
-            if (str_contains($title, 'cover')) $score -= 60;
+            if ($this->hasBadKeyword($title) || $this->hasBadKeyword($chan)) continue;
 
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $c['video_id'];
-            }
+            $titleKey = $this->key($c['title']);
+            $trackOk  = $trackKey !== '' && str_contains($titleKey, $trackKey);
+            $artistOk = $artistKey !== '' &&
+                (str_contains($titleKey, $artistKey) || str_contains($this->key($c['channel']), $artistKey));
+            if (! $trackOk && ! $artistOk) continue;
+
+            $isTopic         = str_contains($chan, '- topic');
+            $isOfficialAudio = str_contains($title, 'official audio');
+
+            // Audio oficial ("- Topic") es el ideal: empieza en 0, sin intro
+            $score = 100 - $durDiff * 25;
+            if ($isTopic)                        $score += 120;
+            if ($isOfficialAudio)                $score += 80;
+            if (str_contains($title, 'audio'))   $score += 20;
+            if (str_contains($title, 'official')) $score += 10;
+            if ($trackOk)                        $score += 15;
+            if (! $artistOk)                     $score -= 30;
+
+            $out[] = [
+                'video_id' => $c['video_id'],
+                'score'    => $score,
+                'strong'   => $isTopic || $isOfficialAudio,
+            ];
         }
 
-        return $best ? ['video_id' => $best, 'offset' => 0] : null;
+        return $out;
+    }
+
+    /** Info de un solo video (barato: 1 unidad de cuota). null si no existe/privado. */
+    public function inspect(string $videoId): ?array
+    {
+        if (! $this->apiKey || $videoId === '') return null;
+
+        $res = Http::timeout(10)->get(self::VIDEOS, [
+            'key'  => $this->apiKey,
+            'id'   => $videoId,
+            'part' => 'snippet,contentDetails,status',
+        ]);
+        if (! $res->ok()) return null;
+
+        $item = $res->json('items.0');
+        if (! $item) return null; // eliminado, privado o id inválido
+
+        return [
+            'duration'   => $this->iso8601ToSeconds($item['contentDetails']['duration'] ?? 'PT0S'),
+            'embeddable' => $item['status']['embeddable'] ?? false,
+            'title'      => $item['snippet']['title'] ?? '',
+            'channel'    => $item['snippet']['channelTitle'] ?? '',
+        ];
+    }
+
+    public function hasBadKeyword(string $title): bool
+    {
+        $t = mb_strtolower($title);
+        foreach (self::BAD_KEYWORDS as $bad) {
+            if (str_contains($t, $bad)) return true;
+        }
+        return false;
+    }
+
+    /** Clave normalizada (solo alfanuméricos, sin paréntesis) para comparar títulos. */
+    private function key(string $s): string
+    {
+        $s = mb_strtolower($s);
+        $s = preg_replace('/\(.*?\)|\[.*?\]/u', '', $s);   // quita (feat. …), [Official] …
+        return preg_replace('/[^a-z0-9]+/', '', $s) ?? '';
     }
 
     /**
@@ -121,14 +204,14 @@ class YouTubeFinderService
         return $scored;
     }
 
-    private function searchVideos(string $query): array
+    private function searchVideos(string $query, int $maxResults = 10): array
     {
         $res = Http::timeout(10)->get(self::SEARCH, [
             'key'        => $this->apiKey,
             'q'          => $query,
             'part'       => 'snippet',
             'type'       => 'video',
-            'maxResults' => 10,
+            'maxResults' => $maxResults,
             'videoEmbeddable' => 'true',
         ]);
 

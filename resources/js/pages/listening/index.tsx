@@ -2,7 +2,10 @@ import { useState, useMemo } from 'react'
 import AppLayout from '@/layouts/app-layout'
 import { type BreadcrumbItem } from '@/types'
 import { Head, router } from '@inertiajs/react'
-import { Clapperboard, Headphones, Play, Search } from 'lucide-react'
+import { Clapperboard, Headphones, Play, Plus, Search, Sparkles } from 'lucide-react'
+
+const csrf = () =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
 
 interface SongItem {
     id:           number
@@ -64,6 +67,36 @@ export default function ListeningIndex({ songs }: IndexProps) {
     const [filterType,  setFilterType ] = useState('')
     const [filterLevel, setFilterLevel] = useState('')
     const [page,        setPage       ] = useState(1)
+
+    // Buscador de canciones ilimitadas (YouTube + LRCLIB)
+    const [addQuery, setAddQuery] = useState('')
+    const [adding,   setAdding  ] = useState(false)
+    const [addMsg,   setAddMsg  ] = useState<{ ok: boolean; text: string } | null>(null)
+
+    async function handleAddSong() {
+        const q = addQuery.trim()
+        if (!q || adding) return
+        setAdding(true)
+        setAddMsg(null)
+        try {
+            const res = await fetch('/listening/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                body: JSON.stringify({ query: q }),
+            })
+            const data = await res.json()
+            if (data.ok && data.activity_id) {
+                setAddMsg({ ok: true, text: `¡Listo! "${data.title}" — ${data.artist}. Abriendo…` })
+                router.visit(`/listening/${data.activity_id}`)
+                return
+            }
+            setAddMsg({ ok: false, text: data.message ?? 'No se pudo agregar la canción.' })
+        } catch {
+            setAddMsg({ ok: false, text: 'Error de conexión. Inténtalo de nuevo.' })
+        } finally {
+            setAdding(false)
+        }
+    }
 
     const types  = useMemo(() => [...new Set(songs.map(s => s.type).filter(Boolean))].sort(), [songs])
     const levels = useMemo(() =>
@@ -134,6 +167,68 @@ export default function ListeningIndex({ songs }: IndexProps) {
                             </div>
                         ))}
                     </div>
+                </div>
+
+                {/* ── Canciones ilimitadas: buscar y agregar ── */}
+                <div style={{
+                    background: 'linear-gradient(135deg, var(--accent-soft) 0%, var(--bg-elevated) 100%)',
+                    border: '1px solid var(--line)', borderRadius: 16, padding: '18px 20px', marginBottom: 24,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <Sparkles size={17} style={{ color: 'var(--accent)' }} />
+                        <span style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 15 }}>
+                            ¿No está tu canción? Agrégala
+                        </span>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--ink-muted)', margin: '0 0 12px' }}>
+                        Escribe el nombre (o "Artista - Título"). La buscamos en YouTube y su letra
+                        sincronizada, y creamos la actividad al instante.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ position: 'relative', flex: '1 1 260px', minWidth: 180 }}>
+                            <Search size={14} style={{
+                                position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
+                                color: 'var(--ink-subtle)', pointerEvents: 'none',
+                            }} />
+                            <input
+                                type="text"
+                                placeholder='Ej. "Closed On Sunday" o "Kanye West - Closed On Sunday"'
+                                value={addQuery}
+                                onChange={e => setAddQuery(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleAddSong() }}
+                                disabled={adding}
+                                style={{
+                                    width: '100%', boxSizing: 'border-box', padding: '11px 12px 11px 32px',
+                                    border: '1px solid var(--line)', borderRadius: 10, fontSize: 14,
+                                    color: 'var(--ink)', background: 'var(--bg-elevated)', outline: 'none',
+                                    fontFamily: 'DM Sans, sans-serif',
+                                }}
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddSong}
+                            disabled={adding || !addQuery.trim()}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0 22px',
+                                borderRadius: 10, border: 'none', cursor: adding ? 'default' : 'pointer',
+                                background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 600,
+                                fontSize: 14, fontFamily: 'DM Sans, sans-serif',
+                                opacity: adding || !addQuery.trim() ? 0.55 : 1,
+                            }}
+                        >
+                            {adding
+                                ? <>🔎 Buscando…</>
+                                : <><Plus size={16} /> Agregar</>}
+                        </button>
+                    </div>
+                    {addMsg && (
+                        <p style={{
+                            margin: '10px 2px 0', fontSize: 13,
+                            color: addMsg.ok ? 'var(--success)' : 'var(--danger)',
+                        }}>
+                            {addMsg.text}
+                        </p>
+                    )}
                 </div>
 
                 {/* ── Filters ── */}

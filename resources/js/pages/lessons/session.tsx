@@ -6,6 +6,7 @@ import { Head, router } from '@inertiajs/react'
 import VocabLessonContent, { type FocusWord } from './VocabLessonContent'
 import '../lessons.css'
 import './session.css'
+import { LESSON_STRINGS, lessonLocale, type LessonStrings } from '@/lib/lesson-i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,11 +130,12 @@ function resolveStudentAnswer(ex: Exercise, raw: string | number | number[] | un
 // ─── Exercise renderer ────────────────────────────────────────────────────────
 
 function ExerciseInput({
-    exercise, answer, onChange,
+    exercise, answer, onChange, t,
 }: {
     exercise: Exercise
     answer: string | number | number[] | undefined
     onChange: (v: string | number | number[]) => void
+    t: LessonStrings
 }) {
     switch (exercise.type) {
         case 'fill_blank':
@@ -143,7 +145,7 @@ function ExerciseInput({
                     type="text"
                     value={(answer as string) ?? ''}
                     onChange={e => onChange(e.target.value)}
-                    placeholder="Type your answer..."
+                    placeholder={t.typeAnswer}
                 />
             )
 
@@ -175,8 +177,8 @@ function ExerciseInput({
                     value={(answer as string) ?? ''}
                     onChange={e => onChange(e.target.value)}
                     placeholder={exercise.type === 'translation_es_to_en'
-                        ? 'Write your translation in English...'
-                        : 'Write the corrected sentence...'}
+                        ? t.writeTranslation
+                        : t.writeCorrected}
                 />
             )
 
@@ -193,7 +195,7 @@ function ExerciseInput({
                 <>
                     <div className={`word-builder ${selected.length > 0 ? 'has-words' : ''}`}>
                         {selected.length === 0
-                            ? <span className="word-builder-placeholder">Click words below to build your sentence...</span>
+                            ? <span className="word-builder-placeholder">{t.clickWords}</span>
                             : selected.map((wordIdx, pos) => (
                                 <span
                                     key={pos}
@@ -209,7 +211,7 @@ function ExerciseInput({
                             ))
                         }
                         {selected.length > 0 && (
-                            <button className="word-clear-btn" onClick={() => onChange([])}>✕ clear</button>
+                            <button className="word-clear-btn" onClick={() => onChange([])}>{t.clearWords}</button>
                         )}
                     </div>
                     <div className="word-pool">
@@ -235,13 +237,14 @@ function ExerciseInput({
 }
 
 function ExerciseCard({
-    exercise, index, total, answer, onChange,
+    exercise, index, total, answer, onChange, t,
 }: {
     exercise: Exercise
     index: number
     total: number
     answer: string | number | number[] | undefined
     onChange: (v: string | number | number[]) => void
+    t: LessonStrings
 }) {
     const isAnswered = answer !== undefined && answer !== null &&
         (typeof answer === 'string' ? answer.trim() !== '' :
@@ -249,39 +252,79 @@ function ExerciseCard({
 
     // Validación segura para el .join()
     const questionText = exercise.type === 'word_order'
-        ? `Arrange these words: ${Array.isArray(exercise.question) ? exercise.question.join(' / ') : exercise.question}`
+        ? `${t.arrangeWords} ${Array.isArray(exercise.question) ? exercise.question.join(' / ') : exercise.question}`
         : exercise.question as string
 
     return (
         <div className={`exercise-card ${isAnswered ? 'answered' : ''}`}>
-            <div className="exercise-num">Exercise {index + 1} / {total}</div>
+            <div className="exercise-num">{t.exerciseNum(index + 1, total)}</div>
             <div className="exercise-instruction">{exercise.instruction}</div>
             <div className="exercise-question">{questionText}</div>
-            <ExerciseInput exercise={exercise} answer={answer} onChange={onChange} />
+            <ExerciseInput exercise={exercise} answer={answer} onChange={onChange} t={t} />
         </div>
     )
 }
 
 // ─── Loading ──────────────────────────────────────────────────────────────────
 
-function Loading({ message }: { message: string }) {
+// Una sola barra, por bloques. Generar es UNA petición HTTP, así que no hay progreso
+// real que reportar: los bloques avanzan por tiempo con la etiqueta de lo que está
+// pasando, y el último solo se llena cuando llega la respuesta. Así la barra no promete
+// algo que no sabe.
+function Loading({ message, stages, step, onRetry, t }: {
+    message: string
+    stages: string[]
+    step: number
+    onRetry?: () => void
+    t: LessonStrings
+}) {
+    const failed = Boolean(onRetry)
+    const current = stages[Math.min(step, stages.length - 1)] ?? message
+
     return (
         <div className="lesson-loading">
-            <div className="lesson-loading-dots"><span /><span /><span /></div>
-            <p className="lesson-loading-msg">{message}</p>
+            {!failed && stages.length > 0 && (
+                <>
+                    <div
+                        className="load-bar"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={stages.length}
+                        aria-valuenow={step}
+                        aria-label={current}
+                    >
+                        {stages.map((_, i) => (
+                            <span
+                                key={i}
+                                className={`load-block${i < step ? ' done' : i === step ? ' active' : ''}`}
+                            />
+                        ))}
+                    </div>
+                    <p className="lesson-loading-msg">
+                        {current}
+                        <span className="load-count"> · {Math.min(step + 1, stages.length)}/{stages.length}</span>
+                    </p>
+                </>
+            )}
+            {failed && <p className="lesson-loading-msg">{message}</p>}
+            {onRetry && (
+                <button className="btn-lesson-primary" onClick={onRetry}>
+                    ↻ {t.tryAgain}
+                </button>
+            )}
         </div>
     )
 }
 
 // ─── Phase bar ────────────────────────────────────────────────────────────────
 
-function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
+function PhaseBar({ phase, hasWarmup, t }: { phase: Phase; hasWarmup: boolean; t: LessonStrings }) {
     const steps: { id: Phase; label: string }[] = [
-        ...(hasWarmup ? [{ id: 'warmup' as Phase, label: 'Warm-up' }] : []),
-        { id: 'lesson', label: 'Lesson' },
-        { id: 'practice', label: 'Practice' },
-        { id: 'production', label: 'Writing' },
-        { id: 'results', label: 'Results' },
+        ...(hasWarmup ? [{ id: 'warmup' as Phase, label: t.phaseWarmup }] : []),
+        { id: 'lesson', label: t.phaseLesson },
+        { id: 'practice', label: t.phasePractice },
+        { id: 'production', label: t.phaseWriting },
+        { id: 'results', label: t.phaseResults },
     ]
     const order = steps.map(s => s.id)
     const currentIdx = order.indexOf(phase === 'evaluating' ? 'production' : phase)
@@ -310,8 +353,13 @@ function PhaseBar({ phase, hasWarmup }: { phase: Phase; hasWarmup: boolean }) {
 export default function SessionPage({ topic, sessionState, level = 'B1' }: SessionPageProps) {
     // El botón de traductor solo se ofrece en A2 (A1 ya viene en español; B1+ se queda en inglés)
     const canTranslate = level === 'A2'
+    // Idioma de la interfaz según el nivel: A1/A2 en español, B1+ en inglés
+    const t = LESSON_STRINGS[lessonLocale(level)]
     const [phase, setPhase] = useState<Phase>('loading')
-    const [loadingMsg, setLoadingMsg] = useState('Alex is preparing your session...')
+    const [loadingMsg, setLoadingMsg] = useState(t.preparing)
+    const [loadError, setLoadError] = useState(false)
+    const [loadStep, setLoadStep]   = useState(0)
+    const [submitError, setSubmitError] = useState<string | null>(null)
     const [session, setSession] = useState<GeneratedSession | null>(null)
     const [sessionId, setSessionId] = useState<number | null>(null)
 
@@ -346,13 +394,15 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
 
     async function generate() {
         setPhase('loading')
-        setLoadingMsg('Alex is preparing your session...')
+        setLoadError(false)
+        setLoadingMsg(t.preparing)
         try {
             const data = await postJson((window as any).route('lessons.session.generate'), {
                 topic_id: topic.id,
             })
             if (data.error || !data.session) {
-                setLoadingMsg('Something went wrong generating the session. Please refresh.')
+                setLoadingMsg(t.genFailed)
+                setLoadError(true)
                 return
             }
             setSession(data.session)
@@ -360,7 +410,8 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
             // Primera fase: warmup si existe, si no lesson
             setPhase(data.session.warmup ? 'warmup' : 'lesson')
         } catch {
-            setLoadingMsg('Connection error. Please refresh.')
+            setLoadingMsg(t.connError)
+            setLoadError(true)
         }
     }
 
@@ -409,20 +460,41 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
     }
 
     // ── Submit ───────────────────────────────────────────────────────────────
+    // Avance de la barra mientras se espera. Se detiene en el último bloque y no lo
+    // rebasa: ese lo cierra la respuesta real, no el reloj.
+    const loadStages = phase === 'evaluating' ? t.stagesEvaluate : t.stagesGenerate
+
+    useEffect(() => {
+        const cargando = (phase === 'loading' || phase === 'evaluating') && !loadError && !submitError
+        if (!cargando) return
+
+        setLoadStep(0)
+        const tope = Math.max(loadStages.length - 1, 0)
+        const id = window.setInterval(
+            () => setLoadStep(prev => (prev >= tope ? tope : prev + 1)),
+            6000,
+        )
+
+        return () => window.clearInterval(id)
+    }, [phase, loadError, submitError, loadStages.length])
+
     async function submit() {
         if (!session || !sessionId) return
+        setSubmitError(null)
         setPhase('evaluating')
-        setLoadingMsg('Alex is checking your work...')
+        setLoadingMsg(t.checking)
 
-        const warmupSub = (session.warmup?.exercises ?? []).map(ex => ({
-            id: ex.id, type: ex.type, question: ex.question, answer: ex.answer,
-            student_answer: resolveStudentAnswer(ex, warmupAnswers[ex.id]),
-        }))
+        // Las opciones viajan con el ejercicio: sin ellas, en un multiple_choice el
+        // evaluador solo ve indices y no puede decirle al alumno que decia la opcion
+        // correcta ("elegiste 2, era 0" no ensena nada).
+        const forEval = (ex: Exercise, raw: string | number | number[] | undefined) => ({
+            id: ex.id, type: ex.type, question: ex.question,
+            options: ex.options ?? null, answer: ex.answer,
+            student_answer: resolveStudentAnswer(ex, raw),
+        })
 
-        const practiceSub = session.practice.exercises.map(ex => ({
-            id: ex.id, type: ex.type, question: ex.question, answer: ex.answer,
-            student_answer: resolveStudentAnswer(ex, practiceAnswers[ex.id]),
-        }))
+        const warmupSub   = (session.warmup?.exercises ?? []).map(ex => forEval(ex, warmupAnswers[ex.id]))
+        const practiceSub = session.practice.exercises.map(ex => forEval(ex, practiceAnswers[ex.id]))
 
         const submission = {
             aspect: session.aspect,
@@ -431,6 +503,9 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
             practice_answers: practiceSub,
             free_production: {
                 prompt: session.free_production.prompt,
+                // El evaluador necesita saber que estructuras se exigieron: si no, no puede
+                // juzgar si el alumno las uso (y las exigencias viven aqui, no solo en el prompt).
+                target_structures: session.free_production.target_structures,
                 text: productionText,
             },
             focus_words: session.focus_words ?? [],
@@ -443,7 +518,8 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                 submission,
             })
             if (data.error) {
-                setLoadingMsg('Evaluation error. Please try submitting again.')
+                setSubmitError(t.evalFailed)
+                setPhase('production')
                 return
             }
             setEvaluation(data.evaluation)
@@ -451,7 +527,8 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
             setSuggestedActivity(data.suggest_activity ?? null)
             setPhase('results')
         } catch {
-            setLoadingMsg('Connection error during evaluation.')
+            setSubmitError(t.evalConnError)
+            setPhase('production')
         }
     }
 
@@ -479,13 +556,13 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
             <div className="lesson-root">
 
                 {session && phase !== 'loading' && (
-                    <PhaseBar phase={phase} hasWarmup={!!session.warmup} />
+                    <PhaseBar phase={phase} hasWarmup={!!session.warmup} t={t} />
                 )}
 
                 {/* Topic + session meta */}
                 <div className="lesson-topic-header">
                     <div className="lesson-topic-label">
-                        Topic {topic.order} · Session {sessionState.session_number}
+                        {t.topicSession(topic.order, sessionState.session_number)}
                     </div>
                     <div className="lesson-topic-title">{topic.title}</div>
                 </div>
@@ -493,29 +570,37 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                 {session && phase !== 'loading' && phase !== 'results' && (
                     <div className="session-meta">
                         <span className="session-meta-item">
-                            Today's focus: <strong>{session.aspect}</strong>
+                            {t.todaysFocus} <strong>{session.aspect}</strong>
                         </span>
                         {sessionState.cumulative_score > 0 && (
                             <span className="session-meta-item">
-                                Progress so far: <strong>{sessionState.cumulative_score}/100</strong>
+                                {t.progressSoFar} <strong>{sessionState.cumulative_score}/100</strong>
                             </span>
                         )}
                         {session.is_consolidation && (
                             <span className="session-meta-item">
-                                <strong>🎯 Consolidation session</strong>
+                                <strong>{t.consolidation}</strong>
                             </span>
                         )}
                     </div>
                 )}
 
                 {/* ── LOADING / EVALUATING ── */}
-                {(phase === 'loading' || phase === 'evaluating') && <Loading message={loadingMsg} />}
+                {(phase === 'loading' || phase === 'evaluating') && (
+                    <Loading
+                        message={loadingMsg}
+                        stages={loadStages}
+                        step={loadStep}
+                        onRetry={phase === 'loading' && loadError ? generate : undefined}
+                        t={t}
+                    />
+                )}
 
                 {/* ── WARM-UP ── */}
                 {phase === 'warmup' && session?.warmup && (
                     <>
                         <div className="warmup-banner">
-                            🔁 Quick review of what you learned last time
+                            {t.warmupBanner}
                         </div>
                         <p className="phase-intro">{session.warmup.intro}</p>
 
@@ -528,6 +613,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                     total={session.warmup!.exercises.length}
                                     answer={warmupAnswers[ex.id]}
                                     onChange={v => setWarmupAnswers(p => ({ ...p, [ex.id]: v }))}
+                                    t={t}
                                 />
                             ))}
                         </div>
@@ -538,7 +624,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                 disabled={!warmupComplete}
                                 onClick={() => setPhase('lesson')}
                             >
-                                Continue to lesson →
+                                {t.continueToLesson}
                             </button>
                         </div>
                     </>
@@ -584,7 +670,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                 />
                                 <div className="lesson-actions">
                                     <button className="btn-lesson-primary" onClick={() => setPhase('practice')}>
-                                        I'm ready to practice →
+                                        {t.readyToPractice}
                                     </button>
                                 </div>
                             </div>
@@ -596,7 +682,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                 {phase === 'practice' && session && (
                     <>
                         <p className="phase-intro">
-                            {session.practice.intro} Answer on your own — no hints. That's how you learn.
+                            {session.practice.intro} {t.practiceHint}
                         </p>
 
                         <div className="exercises-list">
@@ -608,6 +694,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                     total={session.practice.exercises.length}
                                     answer={practiceAnswers[ex.id]}
                                     onChange={v => setPracticeAnswers(p => ({ ...p, [ex.id]: v }))}
+                                    t={t}
                                 />
                             ))}
                         </div>
@@ -618,7 +705,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                 disabled={!practiceComplete}
                                 onClick={() => setPhase('production')}
                             >
-                                Continue to writing →
+                                {t.continueToWriting}
                             </button>
                         </div>
                     </>
@@ -628,7 +715,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                 {phase === 'production' && session && (
                     <>
                         <div className="production-prompt-box">
-                            <div className="production-prompt-label">Your writing task</div>
+                            <div className="production-prompt-label">{t.writingTask}</div>
                             <p className="production-prompt-text">{session.free_production.prompt}</p>
                             {session.free_production.target_structures.length > 0 && (
                                 <div className="production-targets">
@@ -643,25 +730,28 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                             className="production-textarea"
                             value={productionText}
                             onChange={e => setProductionText(e.target.value)}
-                            placeholder="Write your answer here in English..."
+                            placeholder={t.writePlaceholder}
                         />
                         <div className={`word-count ${productionOk ? 'met' : ''}`}>
-                            {wordCount} / {session.free_production.min_words} words minimum
+                            {wordCount} / {session.free_production.min_words} {t.wordsMinimum}
                         </div>
+                        {submitError && (
+                            <div className="warmup-banner" style={{ marginTop: 12 }}>⚠ {submitError}</div>
+                        )}
 
                         <div className="lesson-actions">
                             <button
                                 className="btn-lesson-secondary"
                                 onClick={() => setPhase('practice')}
                             >
-                                ← Back
+                                {t.back}
                             </button>
                             <button
                                 className="btn-lesson-primary"
                                 disabled={!productionOk}
                                 onClick={submit}
                             >
-                                Submit session
+                                {t.submitSession}
                             </button>
                         </div>
                     </>
@@ -679,29 +769,29 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                     result.next_step === 'needs_consolidation' ? '💪' : '📈'}
                             </div>
                             <div className="mastery-title">
-                                {result.next_step === 'topic_completed' ? 'Topic mastered!' :
-                                    result.next_step === 'needs_consolidation' ? 'Almost there!' : 'Great progress!'}
+                                {result.next_step === 'topic_completed' ? t.verdictMastered :
+                                    result.next_step === 'needs_consolidation' ? t.verdictAlmost : t.verdictProgress}
                             </div>
                             <p className="mastery-msg">
                                 {result.next_step === 'topic_completed'
-                                    ? 'You\'ve shown consistent mastery across multiple sessions. The next topic is now unlocked.'
+                                    ? t.msgMastered
                                     : result.next_step === 'needs_consolidation'
-                                        ? 'You\'ve covered all the material — one more solid session will lock it in.'
-                                        : `${evaluation.encouragement} Come back for your next session to keep building.`}
+                                        ? t.msgAlmost
+                                        : `${evaluation.encouragement} ${t.keepBuilding}`}
                             </p>
 
                             <div className="score-chips">
                                 <div className="score-chip">
                                     <div className="score-chip-num">{result.session_score}</div>
-                                    <div className="score-chip-label">This session</div>
+                                    <div className="score-chip-label">{t.chipThisSession}</div>
                                 </div>
                                 <div className="score-chip">
                                     <div className="score-chip-num">{result.cumulative_score}</div>
-                                    <div className="score-chip-label">Topic average</div>
+                                    <div className="score-chip-label">{t.chipTopicAverage}</div>
                                 </div>
                                 <div className="score-chip">
                                     <div className="score-chip-num">{result.sessions_count}</div>
-                                    <div className="score-chip-label">Sessions done</div>
+                                    <div className="score-chip-label">{t.chipSessionsDone}</div>
                                 </div>
                             </div>
                         </div>
@@ -709,7 +799,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                         {/* Free production feedback */}
                         {evaluation.free_production_feedback && (
                             <div className="production-fb-box">
-                                <div className="production-fb-label">Feedback on your writing</div>
+                                <div className="production-fb-label">{t.writingFeedback}</div>
                                 <p className="production-fb-text">{evaluation.free_production_feedback}</p>
                             </div>
                         )}
@@ -728,9 +818,9 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                         <div className="result-body">
                                             {!res.correct && (
                                                 <div className="result-answers">
-                                                    <span className="yours">You: {String(res.student_answer)}</span>
+                                                    <span className="yours">{t.youAnswered} {String(res.student_answer)}</span>
                                                     {' · '}
-                                                    <span className="correct-ans">Correct: {String(res.correct_answer)}</span>
+                                                    <span className="correct-ans">{t.correctAnswer} {String(res.correct_answer)}</span>
                                                 </div>
                                             )}
                                             <div className="result-fb">{res.feedback}</div>
@@ -768,14 +858,14 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                 className="btn-lesson-secondary"
                                 onClick={() => router.visit((window as any).route('lessons.index'))}
                             >
-                                Back to lessons
+                                {t.backToLessons}
                             </button>
                             {!result.mastered && (
                                 <button
                                     className="btn-lesson-primary"
                                     onClick={generate}
                                 >
-                                    Start next session →
+                                    {t.startNextSession}
                                 </button>
                             )}
                             {result.mastered && (
@@ -783,7 +873,7 @@ export default function SessionPage({ topic, sessionState, level = 'B1' }: Sessi
                                     className="btn-lesson-primary"
                                     onClick={() => router.visit((window as any).route('lessons.index'))}
                                 >
-                                    Continue to next topic →
+                                    {t.continueNextTopic}
                                 </button>
                             )}
                         </div>

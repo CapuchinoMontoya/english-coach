@@ -6,6 +6,7 @@ use App\Jobs\GenerateStudyPlanJob;
 use App\Services\AI\AIProviderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Response;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -94,6 +95,35 @@ class PlacementController extends Controller
             Analyze the conversation between an AI coach (Alex) and a student.
             Evaluate ONLY the student's ENGLISH ability — never the coach's.
 
+            ━━━ STEP 0 — COUNT BEFORE YOU JUDGE (do this first, always) ━━━
+            Do not form an impression and then justify it. Measure first.
+
+            Go through the STUDENT's turns one by one and work out three numbers:
+
+            (1) TOTAL TURNS the student took.
+            (2) ENGLISH-CARRIED TURNS: turns where the substance of the answer was in
+                English. A turn is NOT English-carried if the student answered the question
+                in Spanish and only sprinkled English fragments, quoted phrases, or single
+                words into it — even many of them, even long ones. Ask yourself: if I
+                deleted every Spanish word from this turn, would an answer still be there?
+                If no, it is a SPANISH turn.
+            (3) COMPLETE SELF-BUILT ENGLISH SENTENCES: sentences with a subject and a verb
+                that the student composed themselves AND that stand on their own inside an
+                English-carried turn. Only count sentences from the turns you classified as
+                English-carried in (2) — a sentence that appears inside a Spanish answer is
+                a fragment, not a demonstration, however well formed it is.
+                Do NOT count: fragments embedded in Spanish ("Yo... I work in office, ¿así
+                se dice?"), three-word attempts ("I feel nervous", "I like fútbol"),
+                memorized phrases, email boilerplate they are reporting rather than
+                composing, or anything Alex said first.
+                If (3) comes out higher than a handful while (2) is low, you have counted
+                fragments — go back and recount.
+
+            You MUST report these three numbers in the "production_census" field, and your
+            level has to be consistent with them. This is the guard against the single
+            biggest failure mode of this assessment: a student who is articulate, funny and
+            self-aware IN SPANISH reads as advanced, when their English is barely there.
+
             ━━━ HOW TO JUDGE (read carefully) ━━━
             Base the level ONLY on the English the student actually PRODUCED themselves.
             The following DO NOT raise the level — ignore them as evidence of English skill:
@@ -105,8 +135,37 @@ class PlacementController extends Controller
             - Memorized survival phrases ("Hello, one coffee please", "Thank you", "Medium, please").
             - The coach's praise, encouragement, or ANY level the coach mentioned — ignore it entirely.
 
-            Be CONSERVATIVE. If the evidence sits between two levels, choose the LOWER one.
-            Overplacing a beginner frustrates them; underplacing is the safer error.
+            These DO raise the level — count them as real evidence when you see them:
+            - Original sentences the student built themselves, with more than one clause,
+              joined by because / but / so / when / although.
+            - Narrating something that happened, with past tenses that mostly work.
+            - Giving an opinion AND justifying it, or comparing two things.
+            - Perfect aspect ("I have worked here for three years", "I've been working"),
+              future forms, passives, or modals of speculation ("it might have been").
+            - Conditionals, even imperfect ones ("if I could travel for work, that would be
+              better").
+            - Sustaining several turns in English WITHOUT switching to Spanish, and asking
+              for clarification in English ("Sorry, what do you mean?").
+            - Self-correcting or paraphrasing around a word they don't know, instead of
+              stopping.
+            Non-native slips (prepositions, articles, "depend of", "more better") do NOT cap
+            the level. B1 and B2 speakers make them constantly. Judge RANGE and CONTROL of
+            structures, not error count.
+
+            But this evidence only counts when it appears in SUSTAINED production the student
+            drove themselves. One broken fragment inside an otherwise Spanish answer
+            ("Ummm... I work in office... ¿así se dice?") is an ATTEMPT, not a demonstration.
+            Count how many separate, self-built English sentences with a subject and a verb
+            the student produced across the whole conversation, and weigh that, not the best
+            single moment.
+
+            Be conservative ONLY when the evidence is genuinely tied between two adjacent
+            levels — then pick the lower one. Do NOT apply it as a general downward pull: if
+            the student clearly shows what a level requires, assign that level even when
+            their English is far from perfect.
+            Both errors hurt. Overplacing a beginner drowns them; underplacing an
+            intermediate makes them grind through months of material they already know,
+            which is the fastest way to lose them.
 
             ━━━ CEFR RUBRIC (English PRODUCTION) ━━━
             A0: Almost no English. Only a handful of isolated words. Cannot build any phrase.
@@ -116,21 +175,74 @@ class PlacementController extends Controller
             A2: Can PRODUCE simple ORIGINAL sentences in English about familiar topics
                 (self, family, routine, likes) using basic present/past. Manages short routine
                 exchanges in English and gets the gist of simple, slow English — not just single words.
-            B1: Connects sentences, gives opinions, narrates experiences, copes with most everyday
-                situations in English.
-            B2: Fluent and detailed; argues and explains comfortably.
-            C1: Sophisticated, near-native range and nuance.
+            B1: Sustains the conversation in ENGLISH without falling back to Spanish. Joins
+                clauses into connected discourse, narrates past experiences, gives opinions
+                with reasons, handles present perfect and future, attempts conditionals.
+                Copes with most everyday and work situations. Still has persistent errors
+                (prepositions, articles) and struggles with abstract or idiomatic language —
+                but simplifies or paraphrases instead of giving up.
+            B2: Fluent and detailed across abstract topics. Argues a position, concedes a
+                point, speculates, and compares with nuance. Comfortable with a RANGE of
+                structures: perfect aspects, all conditionals, passive voice, modals of
+                speculation. Some natural collocations and idioms. Occasional subtle
+                non-native slips remain.
+            C1: Sophisticated, near-native range, register control and nuance. Handles
+                implicit meaning and shifts tone deliberately.
 
-            DECISIVE TEST for A1 vs A2: Did the student CONSTRUCT at least a few original simple
-            English sentences (NOT memorized phrases, NOT single cognate words)?
-              - No  → A1  (or A0 if there was barely any English at all).
-              - Yes → A2 or higher, per the rubric.
+            Work the thresholds IN ORDER. Each one is a yes/no question about what you can
+            actually see in the transcript.
+
+            GATE 0 — THE LANGUAGE FLOOR. Apply this before anything else, using your census.
+            If ENGLISH-CARRIED TURNS are fewer than half of TOTAL TURNS, the student cannot
+            yet hold a conversation in English, and the ceiling is A1 — full stop. It does
+            not matter how rich, funny or self-aware they were in Spanish, how many English
+            fragments they sprinkled in, or how well they explained their own difficulties.
+            Assign A1 (A0 if there was essentially no English) and stop here.
+            This gate is not negotiable and it overrides every other signal below, including
+            the sentence count in the next threshold. If the census fails this gate, the
+            answer is A1 and you do not read any further. The platform also re-checks this
+            arithmetic after you answer and will correct the level if you got it wrong, so
+            there is nothing to gain by stretching it.
+
+            A1 vs A2: among the students who passed Gate 0, did they produce at least 3
+            COMPLETE SELF-BUILT ENGLISH SENTENCES (your census number 3)?
+              - Fewer than 3  → A1. Stop here.
+              - 3 or more     → continue to the next threshold.
+
+            A2 vs B1: ALL THREE must be true, judged on English only:
+              (a) Most of their turns were ENGLISH-CARRIED (census 2 clearly above half),
+                  and they did NOT retreat to Spanish when the topic got harder.
+              (b) They produced connected multi-clause English discourse joined by
+                  because / but / so / when / although — not just strings of short sentences.
+              (c) They narrated a past experience OR justified an opinion, in English.
+              - Any one of them false → A2. Stop here.
+              - All three true        → at least B1. Continue to the next threshold.
+            Describing a difficulty in Spanish is not (c). Reporting a phrase they once
+            wrote in an email ("The delivery is in two weeks") is not (b).
+
+            B1 vs B2: Did the student handle an ABSTRACT or HYPOTHETICAL question with a
+            developed answer, AND show a RANGE of structures beyond past and present
+            (perfect aspects, conditionals, passive, modals of speculation), AND argue or
+            qualify a position rather than just describe?
+              - No  → B1.
+              - Yes → B2 (C1 only for near-native range, register control and nuance).
+
+            If the conversation never gave the student a chance to show a threshold — for
+            example Alex asked every hard question in Spanish, or the chat ended after three
+            turns — say so in "evidence" and set "confidence" to "low". Do NOT invent the
+            missing evidence, and do NOT punish the student for a question that was never
+            asked: judge the highest level they actually demonstrated.
 
             Return ONLY a valid JSON object. No markdown, no explanation, no code blocks.
 
             {
             "real_level": "A1",
             "confidence": "high",
+            "production_census": {
+                "total_turns": 10,
+                "english_carried_turns": 2,
+                "complete_english_sentences": 1
+            },
             "evidence": "1-2 sentences quoting the ACTUAL English the student produced and why it maps to this level.",
             "learning_style": {
                 "preferred": "conversational",
@@ -148,21 +260,80 @@ class PlacementController extends Controller
             Confidence: low | medium | high
             PROMPT;
 
-        // Llamada NO streaming — espera el JSON completo
-        $raw  = $this->ai->complete('placement', $evalPrompt, $cleanMessages, 800);
-        $json = preg_replace('/```(?:json)?\s*|\s*```/', '', trim($raw));
+        // Llamada NO streaming — espera el JSON completo.
+        //
+        // El tope era 800 tokens y esta respuesta mide ~650 de forma habitual: en
+        // cuanto el modelo se extendía un poco, el JSON llegaba truncado, no parseaba
+        // y caíamos al fallback, que asigna un nivel SIN haber evaluado nada. Se nota
+        // tarde y mal (el alumno queda mal colocado), así que damos margen y
+        // reintentamos antes de rendirnos.
+        // El transcript va como TEXTO en un solo mensaje de usuario. Pasarlo como el
+        // array `messages` convertía la evaluación en "continúa esta charla": si el
+        // último turno era de Alex, el modelo no tenía nada que continuar y devolvía
+        // cadena vacía. La evaluación moría y el fallback colocaba a todos en A1.
+        $transcript = collect($cleanMessages)
+            ->map(function ($m) {
+                $quien = ($m['role'] ?? 'user') === 'assistant' ? 'ALEX (the coach)' : 'STUDENT';
+                $texto = str_replace('[EVALUATION_READY]', '', (string) ($m['content'] ?? ''));
 
-        if (! json_decode($json)) {
-            preg_match('/\{.*\}/s', $json, $matches);
-            $json = $matches[0] ?? $json;
+                return $quien . ': ' . trim($texto);
+            })
+            ->filter(fn ($l) => mb_strlen($l) > 12)
+            ->implode("\n\n");
+
+        $evalMessages = [[
+            'role'    => 'user',
+            'content' => "Here is the full placement conversation to assess. Judge ONLY the "
+                . "STUDENT's English, never ALEX's.\n\n"
+                . "─── CONVERSATION ───\n{$transcript}\n─── END ───\n\n"
+                . 'Return the JSON object now, and nothing else.',
+        ]];
+
+        $evaluation = null;
+
+        foreach ([2500, 4000] as $attempt => $maxTokens) {
+            $raw  = $this->ai->complete('placement', $evalPrompt, $evalMessages, $maxTokens);
+            $json = preg_replace('/```(?:json)?\s*|\s*```/', '', trim($raw));
+
+            if (! json_decode($json)) {
+                preg_match('/\{.*\}/s', $json, $matches);
+                $json = $matches[0] ?? $json;
+            }
+
+            $decoded = json_decode($json, true);
+
+            if ($decoded && isset($decoded['real_level'])) {
+                $evaluation = $decoded;
+                break;
+            }
+
+            Log::warning('Placement: la evaluación no devolvió JSON usable.', [
+                'user_id'     => $user->id,
+                'attempt'     => $attempt + 1,
+                'max_tokens'  => $maxTokens,
+                'raw_length'  => strlen($raw),
+                'raw_tail'    => mb_substr($raw, -200),
+            ]);
         }
 
-        $evaluation = json_decode($json, true);
-
-        // Fallback si el JSON falla
+        // Fallback si el JSON falla incluso tras reintentar
         if (! $evaluation || ! isset($evaluation['real_level'])) {
+            Log::error('Placement: cayendo al nivel por defecto sin evaluación real.', [
+                'user_id'        => $user->id,
+                'declared_level' => $user->learningProfile->declared_level,
+            ]);
+            // Sin evaluación válida, la mejor pista disponible es lo que el alumno dijo
+            // de sí mismo en el onboarding. Asumir A1 siempre mandaba a un B2 al
+            // principio del temario, que es el peor error posible aquí.
+            $autoevaluado = match (data_get($user->learningProfile->learning_style, 'self_assessed_level')) {
+                'elementary'   => 'A2',
+                'intermediate' => 'B1',
+                'advanced'     => 'B2',
+                default        => 'A1',
+            };
+
             $evaluation = [
-                'real_level'      => $user->learningProfile->declared_level ?? 'A1',
+                'real_level'      => $user->learningProfile->declared_level ?? $autoevaluado,
                 'confidence'      => 'low',
                 'learning_style'  => [
                     'preferred'           => 'conversational',
@@ -178,6 +349,39 @@ class PlacementController extends Controller
         }
 
         $profile = $user->learningProfile;
+
+        // El curriculum cubre A1→B2 (C1 es la meta final). A0 se enseña como A1 y
+        // C1/C2 se colocan en la pista B2→C1 para que el plan nunca quede vacío.
+        $evaluation['real_level'] = match (strtoupper((string) $evaluation['real_level'])) {
+            'A0', 'A1' => 'A1',
+            'A2'       => 'A2',
+            'B1'       => 'B1',
+            default    => 'B2',
+        };
+
+        // ── Compuerta del idioma, aplicada aquí y no solo en el prompt ──────────────
+        // Si el alumno no sostuvo ni la mitad de sus turnos en inglés, no puede estar por
+        // encima de A1 por mucho inglés suelto que haya soltado. El modelo calcula bien el
+        // censo pero luego lo pasa por alto (3 de 9 turnos y aun así proponía A2), así que
+        // la aritmética se rehace aquí. Solo BAJA el nivel, nunca lo sube, y si no viene
+        // censo no se toca nada: no inventamos una medición que no existe.
+        $censo    = $evaluation['production_census'] ?? null;
+        $turnos   = (int) ($censo['total_turns'] ?? 0);
+        $enIngles = (int) ($censo['english_carried_turns'] ?? 0);
+
+        if ($turnos >= 4 && $enIngles * 2 < $turnos && $evaluation['real_level'] !== 'A1') {
+            Log::info('Placement: nivel limitado a A1 por la compuerta del idioma.', [
+                'user_id'   => $user->id,
+                'propuesto' => $evaluation['real_level'],
+                'turnos'    => $turnos,
+                'en_ingles' => $enIngles,
+            ]);
+
+            $evaluation['real_level'] = 'A1';
+            $evaluation['confidence'] = 'medium';
+            $evaluation['evidence']   = "[Nivel limitado a A1: solo {$enIngles} de {$turnos} "
+                . 'turnos se sostuvieron en inglés.] ' . ($evaluation['evidence'] ?? '');
+        }
 
         $profile->update([
             'real_level'     => $evaluation['real_level'],

@@ -79,21 +79,25 @@ class ClipActivityService
             ->pluck('listening_activity_id')
             ->all();
 
-        $query = ListeningActivity::active()
-            ->where('type', 'clip')
-            ->where('level', $level)
-            ->whereNotIn('id', $playedIds);
+        // Nivel exacto primero; si no hay clips de ese nivel, niveles vecinos
+        foreach (ListeningActivityService::levelLadder($level) as $lvl) {
+            $query = ListeningActivity::active()
+                ->where('type', 'clip')
+                ->where('level', $lvl)
+                ->whereNotIn('id', $playedIds);
 
-        // Con intereses: matchear tags. Sin intereses: cualquier clip del nivel sirve.
-        if (empty($interests)) {
-            return $query->first();
+            // Con intereses: matchear tags. Sin intereses: cualquier clip del nivel sirve.
+            $match = empty($interests)
+                ? $query->first()
+                : $query->get()->first(fn ($a) => count(array_intersect(
+                    array_map('mb_strtolower', $a->tags ?? []),
+                    array_map('mb_strtolower', $interests)
+                )) > 0);
+
+            if ($match) return $match;
         }
 
-        return $query->get()
-            ->first(fn ($a) => count(array_intersect(
-                array_map('mb_strtolower', $a->tags ?? []),
-                array_map('mb_strtolower', $interests)
-            )) > 0);
+        return null;
     }
 
     // ── Discovery: IA sugiere escenas → YouTube → captions → preguntas ─────────

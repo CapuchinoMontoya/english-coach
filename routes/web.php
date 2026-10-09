@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified', 'role:student', 'placement.done'])->group
     Route::post('/lessons/session/submit',   [SessionController::class, 'submit'])->name('lessons.session.submit');
 
     Route::get('/listening', [ListeningController::class, 'index'])->name('listening.index');
+    Route::post('/listening/search', [ListeningController::class, 'search'])->name('listening.search');
     Route::get('/listening/{id}', [ListeningController::class, 'show'])->name('listening.show');
     Route::post('/listening/complete', [ListeningController::class, 'complete'])->name('listening.complete');
 

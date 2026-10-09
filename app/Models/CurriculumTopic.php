@@ -47,11 +47,13 @@ class CurriculumTopic extends Model
     {
         // Dado el nivel real, encuentra la transición correcta
         $transitions = [
+            'A0' => ['from' => 'A1', 'to' => 'A2'],
             'A1' => ['from' => 'A1', 'to' => 'A2'],
             'A2' => ['from' => 'A2', 'to' => 'B1'],
             'B1' => ['from' => 'B1', 'to' => 'B2'],
             'B2' => ['from' => 'B2', 'to' => 'C1'],
-            'C1' => ['from' => 'C1', 'to' => 'C2'],
+            'C1' => ['from' => 'B2', 'to' => 'C1'],   // no hay pista C1→C2: se consolida en B2→C1
+            'C2' => ['from' => 'B2', 'to' => 'C1'],
         ];
 
         $transition = $transitions[$realLevel] ?? ['from' => 'A2', 'to' => 'B1'];

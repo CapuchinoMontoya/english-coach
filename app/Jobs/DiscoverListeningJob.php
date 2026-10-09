@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Illuminate\Support\Facades\Log;
 use App\Models\CurriculumTopic;
 use App\Models\User;
 use App\Services\Listening\ListeningActivityService;
@@ -22,12 +23,16 @@ class DiscoverListeningJob implements ShouldQueue
 
     public function handle(ListeningActivityService $service): void
     {
-        $user = User::query()->find($this->userId);
-        if (! $user) return;
+        try {
+            $user = User::query()->find($this->userId);
+            if (! $user) return;
 
-        $topic = $this->topicId ? CurriculumTopic::query()->find($this->topicId) : null;
+            $topic = $this->topicId ? CurriculumTopic::query()->find($this->topicId) : null;
 
-        // Descubre (IA + LRCLIB + YouTube) y guarda en el catálogo para la próxima vez
-        $service->getActivityFor($user, $topic);
+            // Descubre (IA + LRCLIB + YouTube) y guarda en el catálogo para la próxima vez
+            $service->getActivityFor($user, $topic);
+        } catch (\Throwable $e) {
+            Log::warning(static::class . ' falló: ' . $e->getMessage());
+        }
     }
 }
