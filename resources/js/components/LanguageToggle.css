@@ -1,0 +1,65 @@
+/* Selector de idioma.
+
+   Estos estilos vivían dentro del <style> de login.tsx, así que el componente se veía
+   bien ahí y SIN DISEÑO en cualquier otra pantalla que lo usara (registro, verificación).
+   Ahora los importa el propio componente: quien lo use, lo obtiene completo. */
+
+.lang-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--bg-elevated);
+}
+
+.lang-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+    font-size: var(--fs-12);
+    font-weight: 500;
+    color: var(--ink-subtle);
+    transition: background .15s, color .15s;
+}
+
+.lang-opt:hover {
+    color: var(--ink);
+    background: var(--bg-sunken);
+}
+
+.lang-opt.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.lang-opt .lang-flag { display: block; flex-shrink: 0; }
+.lang-opt .lang-code { font-family: var(--font-mono); letter-spacing: .04em; }
+
+/* El nombre del idioma solo se muestra en la opción activa: con los dos nombres
+   visibles el control se come el ancho del pie en pantallas chicas. */
+.lang-opt .lang-name { display: none; }
+.lang-opt.active .lang-name { display: inline; }
+.lang-opt.active .lang-name::before { content: '·'; margin-right: 6px; opacity: .55; }
+
+/* En móvil se queda solo bandera + código: "ES" junto a la bandera ya se entiende. */
+@media (max-width: 420px) {
+    .lang-opt.active .lang-name { display: none; }
+}
+
+/* Área de toque de 44px en pantallas táctiles sin agrandar el control visible. */
+@media (hover: none) and (pointer: coarse) {
+    .lang-opt {
+        padding: 8px 12px;
+        font-size: var(--fs-13);
+    }
+}

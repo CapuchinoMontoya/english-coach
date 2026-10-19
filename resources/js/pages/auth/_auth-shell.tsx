@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
+import './auth-responsive.css';
 
 interface WordOfDay {
     word: string;

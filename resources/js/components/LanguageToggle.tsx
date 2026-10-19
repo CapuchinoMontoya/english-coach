@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { LOCALES, type Locale } from '@/lib/auth-i18n'
+import './LanguageToggle.css'
 
 /* ─── Banderas en SVG ──────────────────────────────────────────────────────────
    No usamos emoji (🇲🇽/🇺🇸) porque Windows no trae las banderas en su fuente y

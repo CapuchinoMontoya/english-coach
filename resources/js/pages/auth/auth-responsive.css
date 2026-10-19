@@ -1,0 +1,135 @@
+/* Responsive de las pantallas de autenticación.
+
+   El CSS base de auth está escrito tres veces, en bloques <style> dentro de login.tsx,
+   register.tsx y _auth-shell.tsx. Esos bloques viven en el <body>, así que ganan a una
+   hoja del <head> cuando la especificidad empata: por eso aquí cada regla cuelga de
+   `.auth` o de `body`, para pisarlos a propósito.
+
+   Lo que arregla, de arriba abajo:
+   - 100vh en móvil (la barra del navegador recortaba el contenido)
+   - los dos botones sociales apretados uno al lado del otro en pantallas angostas
+   - las barras superior e inferior, que se desbordaban en vez de ajustarse
+   - el titular, demasiado grande para un teléfono
+   - teléfono en horizontal: contenido centrado que no cabía y quedaba cortado
+   - áreas de toque por debajo de 44px */
+
+/* ── Alto real del viewport ───────────────────────────────────────────────────
+   100vh en móvil incluye la barra de direcciones, así que la pantalla "salta" al
+   hacer scroll y el pie puede quedar fuera. dvh mide lo que de verdad se ve. */
+body .auth {
+    min-height: 100dvh;
+}
+
+@supports not (min-height: 100dvh) {
+    body .auth {
+        min-height: 100vh;
+    }
+}
+
+/* ── Tablet y abajo: el panel de marca ya está oculto por el CSS base ─────── */
+@media (max-width: 940px) {
+    /* Sin el panel izquierdo, el formulario no debe quedar pegado a un borde. */
+    .auth .auth__form {
+        padding: var(--s-7) var(--s-6);
+    }
+
+    .auth .form-shell {
+        margin-inline: auto;
+    }
+}
+
+/* ── Teléfono ─────────────────────────────────────────────────────────────── */
+@media (max-width: 540px) {
+    /* 20px de respiro a los lados; menos se siente apretado y más desperdicia ancho. */
+    .auth .auth__form {
+        padding: var(--s-6) var(--s-5);
+    }
+
+    /* "¿Ya tienes cuenta? [Iniciar sesión]" no cabe en una línea: que baje en vez
+       de encogerse hasta deformar el botón. */
+    .auth .form-top {
+        flex-wrap: wrap;
+        gap: var(--s-3);
+        justify-content: center;
+    }
+
+    /* Mismo problema en el pie, ahora que lleva el selector de idioma. */
+    .auth .form-foot {
+        flex-wrap: wrap;
+        gap: var(--s-3);
+        justify-content: center;
+        text-align: center;
+        padding-bottom: var(--s-2);
+    }
+
+    /* El titular con clamp() se quedaba en 2.4rem (38px) en un teléfono: tres
+       renglones y a veces una palabra cortada. */
+    .auth .display,
+    .auth .form-shell h1.display {
+        font-size: clamp(1.9rem, 9vw, 2.5rem);
+        max-width: 18ch;
+    }
+
+    .auth .sub {
+        max-width: none;
+    }
+
+    .auth .signup-line {
+        margin-top: var(--s-6);
+    }
+}
+
+/* ── Teléfono angosto ─────────────────────────────────────────────────────── */
+@media (max-width: 430px) {
+    /* Dos botones en fila no caben: "Registrarme con Google" se parte o se recorta. */
+    .auth .social-row {
+        grid-template-columns: 1fr;
+    }
+
+    .auth .auth__form {
+        padding: var(--s-5) var(--s-4);
+    }
+}
+
+/* ── Teléfono en horizontal, o ventana baja ───────────────────────────────────
+   El formulario se centra con `margin: auto 0`. Si el contenido es más alto que la
+   pantalla, centrarlo lo recorta por arriba y por abajo. Aquí se alinea arriba y se
+   deja desplazar. */
+@media (max-height: 680px) {
+    .auth .form-shell {
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-block: var(--s-5);
+    }
+
+    .auth .auth__form {
+        justify-content: flex-start;
+    }
+}
+
+/* ── Pantallas táctiles ───────────────────────────────────────────────────────
+   Las guías de accesibilidad piden 44px de lado. El ojito de la contraseña y los
+   enlaces del pie estaban muy por debajo. */
+@media (hover: none) and (pointer: coarse) {
+    .auth .password-wrap .reveal {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .auth .form-foot a,
+    .auth .signup-line a {
+        display: inline-block;
+        padding: 6px 2px;
+    }
+}
+
+/* ── Respeto por quien pide menos movimiento ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .auth *,
+    .auth *::before,
+    .auth *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}

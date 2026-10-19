@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/Alert';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { AUTH_STRINGS, intlTag, useLocale } from '@/lib/auth-i18n';
+import './auth-responsive.css';
 
 interface Meaning {
     type: string;
@@ -337,32 +338,6 @@ export default function Login({ status, canResetPassword, wordOfTheDay }: LoginP
                     0% { transform: scale(0.6); opacity: 0.6; }
                     100% { transform: scale(1.8); opacity: 0; }
                 }
-                /* Selector de idioma */
-                .lang-toggle {
-                    display: inline-flex; align-items: center; gap: 2px;
-                    padding: 2px;
-                    border: 1px solid var(--line);
-                    border-radius: var(--r-pill);
-                    background: var(--bg-elevated);
-                }
-                .lang-opt {
-                    display: inline-flex; align-items: center; gap: 6px;
-                    padding: 4px 10px;
-                    border: none; background: transparent;
-                    border-radius: var(--r-pill);
-                    cursor: pointer; font: inherit; line-height: 1;
-                    font-size: var(--fs-12); font-weight: 500;
-                    color: var(--ink-subtle);
-                    transition: background .15s, color .15s;
-                }
-                .lang-opt:hover { color: var(--ink); background: var(--bg-sunken); }
-                .lang-opt.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-                .lang-opt .lang-flag { display: block; flex-shrink: 0; }
-                .lang-opt .lang-code { font-family: var(--font-mono); letter-spacing: .04em; }
-                .lang-opt .lang-name { display: none; }
-                .lang-opt.active .lang-name { display: inline; }
-                .lang-opt.active .lang-name::before { content: '·'; margin-right: 6px; opacity: .55; }
-                @media (max-width: 420px) { .lang-opt.active .lang-name { display: none; } }
             `}} />
 
             <div className="auth">

@@ -94,6 +94,44 @@ export interface AuthStrings {
     brewFirst: string
     languageLabel: string
     verify: VerifyStrings
+    register: RegisterStrings
+}
+
+/** Pantalla de alta. Textos propios: en el login las mismas palabras significan otra cosa. */
+export interface RegisterStrings {
+    headTitle: string
+    openBadge: string
+    haveAccount: string
+    logIn: string
+    eyebrow: string
+    titlePre: string
+    titleEm: string
+    titlePost: string
+    sub: string
+    signUpGoogle: string
+    signUpApple: string
+    orEmail: string
+    nameLabel: string
+    namePlaceholder: string
+    emailLabel: string
+    emailPlaceholder: string
+    codeLabel: string
+    codePlaceholder: string
+    passwordLabel: string
+    passwordPlaceholder: string
+    confirmLabel: string
+    confirmPlaceholder: string
+    showPassword: string
+    hidePassword: string
+    submit: string
+    alreadyMember: string
+    logInHere: string
+    wordOfDay: string
+    word: string
+    wordPron: string
+    wordDefn: string
+    version: string
+    statusLink: string
 }
 
 /** Pantalla de "confirma tu correo": es la primera que ve un recien registrado. */
@@ -175,6 +213,41 @@ export const AUTH_STRINGS: Record<Locale, AuthStrings> = {
             onePerMinute:   'one email per minute',
             logoutOther:    'Log out and use a different account',
         },
+        register: {
+            headTitle:           'Create an account',
+            openBadge:           'Registrations open',
+            haveAccount:         'Already have an account?',
+            logIn:               'Log in',
+            eyebrow:             'Join the club',
+            titlePre:            'Brew your first ',
+            titleEm:             'cup',
+            titlePost:           '.',
+            sub:                 'Create an account to start your daily English ritual and track your progress.',
+            signUpGoogle:        'Sign up with Google',
+            signUpApple:         'Sign up with Apple',
+            orEmail:             'or register with email',
+            nameLabel:           'Full name',
+            namePlaceholder:     'Jane Doe',
+            emailLabel:          'Email address',
+            emailPlaceholder:    'you@example.com',
+            codeLabel:           'Invitation code',
+            codePlaceholder:     'e.g. KPUCOFFEE20',
+            passwordLabel:       'Password',
+            passwordPlaceholder: 'Create a strong password',
+            confirmLabel:        'Confirm password',
+            confirmPlaceholder:  'Confirm your password',
+            showPassword:        'Show password',
+            hidePassword:        'Hide password',
+            submit:              'Create account',
+            alreadyMember:       'Already a member?',
+            logInHere:           'Log in here →',
+            wordOfDay:           'Word of the day',
+            word:                'embark',
+            wordPron:            '/ɪmˈbɑːrk/',
+            wordDefn:            'To start something new or important; to go onto a ship.',
+            version:             'v1.0',
+            statusLink:          'Status',
+        },
     },
     es: {
         headTitle:       'Iniciar sesión',
@@ -230,6 +303,41 @@ export const AUTH_STRINGS: Record<Locale, AuthStrings> = {
             attemptsLeft:   (left, max) => `Te quedan ${left} de ${max} intentos`,
             onePerMinute:   'un correo por minuto',
             logoutOther:    'Cerrar sesión y usar otra cuenta',
+        },
+        register: {
+            headTitle:           'Crear una cuenta',
+            openBadge:           'Registro abierto',
+            haveAccount:         '¿Ya tienes cuenta?',
+            logIn:               'Iniciar sesión',
+            eyebrow:             'Únete al club',
+            titlePre:            'Prepara tu primera ',
+            titleEm:             'taza',
+            titlePost:           '.',
+            sub:                 'Crea tu cuenta para empezar tu ritual diario de inglés y seguir tu avance.',
+            signUpGoogle:        'Registrarme con Google',
+            signUpApple:         'Registrarme con Apple',
+            orEmail:             'o regístrate con tu correo',
+            nameLabel:           'Nombre completo',
+            namePlaceholder:     'Juan Pérez',
+            emailLabel:          'Correo electrónico',
+            emailPlaceholder:    'tu@ejemplo.com',
+            codeLabel:           'Código de invitación',
+            codePlaceholder:     'ej. KPUCOFFEE20',
+            passwordLabel:       'Contraseña',
+            passwordPlaceholder: 'Crea una contraseña segura',
+            confirmLabel:        'Confirma tu contraseña',
+            confirmPlaceholder:  'Escríbela otra vez',
+            showPassword:        'Mostrar contraseña',
+            hidePassword:        'Ocultar contraseña',
+            submit:              'Crear mi cuenta',
+            alreadyMember:       '¿Ya eres miembro?',
+            logInHere:           'Inicia sesión aquí →',
+            wordOfDay:           'Palabra del día',
+            word:                'embark',
+            wordPron:            '/ɪmˈbɑːrk/',
+            wordDefn:            'Emprender algo nuevo o importante; también, embarcarse.',
+            version:             'v1.0',
+            statusLink:          'Estado',
         },
     },
 }

@@ -5,6 +5,9 @@ import { FormEventHandler, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/input';
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { AUTH_STRINGS, useLocale } from '@/lib/auth-i18n';
+import './auth-responsive.css';
 
 interface RegisterForm {
     name: string;
@@ -26,6 +29,10 @@ export default function Register() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    const [locale, setLocale] = useLocale();
+    const strings = AUTH_STRINGS[locale];
+    const t = strings.register;
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('register'), {
@@ -35,7 +42,7 @@ export default function Register() {
 
     return (
         <>
-            <Head title="Create an account" />
+            <Head title={t.headTitle} />
 
             <style dangerouslySetInnerHTML={{ __html: `
                 html, body { height: 100%; }
@@ -328,31 +335,31 @@ export default function Register() {
                     </div>
 
                     <div className="brand-stamp" aria-hidden="true">
-                        <span>Daily</span>
-                        <span className="big">ritual</span>
-                        <span>Est. 2024</span>
+                        <span>{strings.stampSmall}</span>
+                        <span className="big">{strings.stampBig}</span>
+                        <span>{strings.stampEst} 2024</span>
                     </div>
 
                     <div className="brand-quote">
                         <span className="mark" aria-hidden="true">“</span>
-                        <p className="words">A new word, served warm every morning.</p>
-                        <div className="attrib">The Capuchino promise</div>
+                        <p className="words">{strings.quote}</p>
+                        <div className="attrib">{strings.quoteAttrib}</div>
                     </div>
 
-                    <div className="word-card" aria-label="Today's word">
+                    <div className="word-card" aria-label={strings.todaysWord}>
                         <span className="level a2 lvl" style={{ fontWeight: 600 }}>A2</span>
-                        <div className="label">Word of the day · Wed</div>
-                        <div className="word">embark</div>
-                        <div className="pron">/ɪmˈbɑːrk/ &nbsp;·&nbsp; verb</div>
-                        <div className="defn">To start something new or important; to go onto a ship.</div>
+                        <div className="label">{t.wordOfDay}</div>
+                        <div className="word">{t.word}</div>
+                        <div className="pron">{t.wordPron} &nbsp;·&nbsp; verb</div>
+                        <div className="defn">{t.wordDefn}</div>
                     </div>
 
                     <div className="brand-foot">
                         <span>© {new Date().getFullYear()} Capuchino Co.</span>
                         <div className="row">
-                            <a href="#">Privacy</a>
-                            <a href="#">Terms</a>
-                            <a href="#">Help</a>
+                            <a href="#">{strings.privacy}</a>
+                            <a href="#">{strings.terms}</a>
+                            <a href="#">{strings.help}</a>
                         </div>
                     </div>
                 </aside>
@@ -364,39 +371,39 @@ export default function Register() {
                     <div className="form-top">
                         <span className="availability">
                             <span className="pulse"></span>
-                            Registrations open
+                            {t.openBadge}
                         </span>
                         <div className="row" style={{ alignItems: 'center', gap: 'var(--s-3)' }}>
                             <span className="ink-subtle small" style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)' }}>
-                                Already have an account?
+                                {t.haveAccount}
                             </span>
                             <Link href={route('login')}>
-                                <Button variant="secondary" size="sm">Log in</Button>
+                                <Button variant="secondary" size="sm">{t.logIn}</Button>
                             </Link>
                         </div>
                     </div>
 
                     <div className="form-shell">
-                        <span className="eyebrow"><span className="pip"></span>Join the club</span>
-                        <h1 className="display">Brew your first <em style={{ color: 'var(--accent)' }}>cup</em>.</h1>
-                        <p className="sub">Create an account to start your daily English ritual and track your progress.</p>
+                        <span className="eyebrow"><span className="pip"></span>{t.eyebrow}</span>
+                        <h1 className="display">{t.titlePre}<em style={{ color: 'var(--accent)' }}>{t.titleEm}</em>{t.titlePost}</h1>
+                        <p className="sub">{t.sub}</p>
 
                         <div className="social-row">
                             <a href="/auth/google" className="w-full" style={{ display: 'contents' }}>
                                 <Button variant="secondary" type="button" className="w-full">
-                                    <GoogleIcon /> Sign up with Google
+                                    <GoogleIcon /> {t.signUpGoogle}
                                 </Button>
                             </a>
                             <Button variant="secondary" type="button" className="w-full" disabled>
-                                <AppleIcon /> Sign up with Apple
+                                <AppleIcon /> {t.signUpApple}
                             </Button>
                         </div>
 
-                        <div className="divider">or register with email</div>
+                        <div className="divider">{t.orEmail}</div>
 
                         <form className="login" onSubmit={submit}>
                             {/* NAME */}
-                            <Field label="Full Name" htmlFor="name" error={errors.name}>
+                            <Field label={t.nameLabel} htmlFor="name" error={errors.name}>
                                 <Input
                                     id="name"
                                     type="text"
@@ -404,7 +411,7 @@ export default function Register() {
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="name"
-                                    placeholder="Jane Doe"
+                                    placeholder={t.namePlaceholder}
                                     value={data.name}
                                     onChange={(e) => setData('name', e.target.value)}
                                     invalid={!!errors.name}
@@ -413,14 +420,14 @@ export default function Register() {
                             </Field>
 
                             {/* EMAIL */}
-                            <Field label="Email address" htmlFor="email" error={errors.email}>
+                            <Field label={t.emailLabel} htmlFor="email" error={errors.email}>
                                 <Input
                                     id="email"
                                     type="email"
                                     required
                                     tabIndex={2}
                                     autoComplete="email"
-                                    placeholder="you@example.com"
+                                    placeholder={t.emailPlaceholder}
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                     invalid={!!errors.email}
@@ -429,14 +436,14 @@ export default function Register() {
                             </Field>
 
                             {/* INVITATION CODE */}
-                            <Field label="Invitation Code" htmlFor="invitation_code" error={errors.invitation_code}>
+                            <Field label={t.codeLabel} htmlFor="invitation_code" error={errors.invitation_code}>
                                 <Input
                                     id="invitation_code"
                                     type="text"
                                     required
                                     tabIndex={3}
                                     autoComplete="off"
-                                    placeholder="e.g. KPUCOFFEE20"
+                                    placeholder={t.codePlaceholder}
                                     value={data.invitation_code}
                                     onChange={(e) => setData('invitation_code', e.target.value.toUpperCase())}
                                     invalid={!!errors.invitation_code}
@@ -445,7 +452,7 @@ export default function Register() {
                             </Field>
 
                             {/* PASSWORD */}
-                            <Field htmlFor="password" error={errors.password} label="Password">
+                            <Field htmlFor="password" error={errors.password} label={t.passwordLabel}>
                                 <div className="password-wrap">
                                     <Input
                                         id="password"
@@ -453,7 +460,7 @@ export default function Register() {
                                         required
                                         tabIndex={4}
                                         autoComplete="new-password"
-                                        placeholder="Create a strong password"
+                                        placeholder={t.passwordPlaceholder}
                                         value={data.password}
                                         onChange={(e) => setData('password', e.target.value)}
                                         invalid={!!errors.password}
@@ -464,7 +471,7 @@ export default function Register() {
                                         type="button"
                                         className="reveal"
                                         onClick={() => setShowPassword((v) => !v)}
-                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        aria-label={showPassword ? t.hidePassword : t.showPassword}
                                     >
                                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
@@ -472,7 +479,7 @@ export default function Register() {
                             </Field>
 
                             {/* CONFIRM PASSWORD */}
-                            <Field htmlFor="password_confirmation" error={errors.password_confirmation} label="Confirm Password">
+                            <Field htmlFor="password_confirmation" error={errors.password_confirmation} label={t.confirmLabel}>
                                 <div className="password-wrap">
                                     <Input
                                         id="password_confirmation"
@@ -480,7 +487,7 @@ export default function Register() {
                                         required
                                         tabIndex={5}
                                         autoComplete="new-password"
-                                        placeholder="Confirm your password"
+                                        placeholder={t.confirmPlaceholder}
                                         value={data.password_confirmation}
                                         onChange={(e) => setData('password_confirmation', e.target.value)}
                                         invalid={!!errors.password_confirmation}
@@ -491,7 +498,7 @@ export default function Register() {
                                         type="button"
                                         className="reveal"
                                         onClick={() => setShowConfirmPassword((v) => !v)}
-                                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                                        aria-label={showConfirmPassword ? t.hidePassword : t.showPassword}
                                     >
                                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
@@ -513,22 +520,22 @@ export default function Register() {
                                         )
                                     }
                                 >
-                                    Create account
+                                    {t.submit}
                                 </Button>
                             </div>
                         </form>
 
                         <p className="signup-line">
-                            Already a member?{' '}
-                            <Link href={route('login')}>Log in here →</Link>
+                            {t.alreadyMember}{' '}
+                            <Link href={route('login')}>{t.logInHere}</Link>
                         </p>
                     </div>
 
                     <div className="form-foot">
-                        <span>v1.0 · Updated 2 days ago</span>
-                        <div className="row">
-                            <a href="#">EN · English</a>
-                            <a href="#">Status</a>
+                        <span>{t.version}</span>
+                        <div className="row" style={{ alignItems: 'center', gap: 'var(--s-3)' }}>
+                            <LanguageToggle locale={locale} onChange={setLocale} label={strings.languageLabel} />
+                            <a href="#">{t.statusLink}</a>
                         </div>
                     </div>
                 </section>
