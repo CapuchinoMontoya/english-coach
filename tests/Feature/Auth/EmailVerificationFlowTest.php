@@ -3,6 +3,7 @@
 use App\Models\LearningProfile;
 use App\Models\User;
 use App\Notifications\VerifyEmailCapuchino;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
@@ -163,4 +164,58 @@ test('la pantalla recibe el estado de los limites al cargar', function () {
             ->where('verificationState.blocked', false)
             ->where('verificationState.wait', fn ($w) => $w > 0 && $w <= 60)
     );
+});
+
+// ── De dónde sale el correo: en línea o por la cola ───────────────────────────
+// Medido: el registro son ~270 ms y el SMTP ~2 s. Sin cola el correo ocupa el mismo
+// worker de PHP y la petición siguiente espera; con cola lo manda otro proceso.
+
+test('sin MAIL_QUEUE_CONNECTION el correo sale en la peticion y no se encola', function () {
+    config(['mail.queue_connection' => null]);
+    Notification::fake();
+
+    // Por HTTP a propósito: defer() se ejecuta al TERMINAR la petición, así que
+    // llamando al método a pelo el callback diferido no corre nunca.
+    $this->post('/register', [
+        'name'                  => 'Sin Cola',
+        'email'                 => 'sin.cola@example.test',
+        'password'              => 'Password123!',
+        'password_confirmation' => 'Password123!',
+        'invitation_code'       => config('app.invitation_code'),
+    ]);
+
+    $user = User::where('email', 'sin.cola@example.test')->firstOrFail();
+
+    Notification::assertSentTo($user, VerifyEmailCapuchino::class);
+    expect(DB::table('jobs')->count())->toBe(0);
+});
+
+test('con MAIL_QUEUE_CONNECTION el correo se encola y no se manda en la peticion', function () {
+    config(['mail.queue_connection' => 'database']);
+    Mail::fake();
+
+    $user = User::factory()->create(['email_verified_at' => null]);
+    $user->sendEmailVerificationNotification();
+
+    expect(DB::table('jobs')->count())->toBe(1);
+
+    $payload = json_decode(DB::table('jobs')->first()->payload, true);
+    expect($payload['displayName'])->toBe(VerifyEmailCapuchino::class);
+
+    // Nada salió dentro de la petición: lo mandará el worker
+    Mail::assertNothingSent();
+});
+
+test('el reenvio manda en el momento aunque la cola este configurada', function () {
+    config(['mail.queue_connection' => 'database']);
+    Notification::fake();
+
+    $user = User::factory()->create(['email_verified_at' => null]);
+
+    $this->actingAs($user)->post('/email/verification-notification')
+        ->assertSessionHas('status', 'verification-link-sent');
+
+    // Síncrono a propósito: el usuario espera una respuesta honesta en pantalla
+    Notification::assertSentTo($user, VerifyEmailCapuchino::class);
+    expect(DB::table('jobs')->count())->toBe(0);
 });

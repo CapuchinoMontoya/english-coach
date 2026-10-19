@@ -18,6 +18,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cola para los correos
+    |--------------------------------------------------------------------------
+    |
+    | Vacío (como está hoy): el correo se manda en el mismo proceso de PHP, fuera
+    | de la respuesta pero ocupando el worker. El registro se siente lento porque
+    | la petición siguiente tiene que esperar su turno.
+    |
+    | Con un valor ('database') la verificación de correo se encola y la manda otro
+    | proceso: el registro pasa de ~2.3 s a ~270 ms. REQUIERE tener corriendo
+    | `php artisan queue:work`; si no, el correo se queda en la cola sin salir.
+    |
+    | Es una conexión aparte, y no el QUEUE_CONNECTION global, para no arrastrar
+    | GenerateStudyPlanJob ni UpdateUserAiContextJob, que hoy corren en línea.
+    |
+    */
+
+    'queue_connection' => env('MAIL_QUEUE_CONNECTION'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |

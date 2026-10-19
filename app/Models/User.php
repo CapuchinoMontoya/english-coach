@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,7 +29,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function trySendEmailVerification(): bool
     {
         try {
-            $this->notify(new VerifyEmailCapuchino);
+            // sendNow() y no notify(): la notificación es encolable, y si la encolamos
+            // aquí devolveríamos "salió" cuando en realidad solo quedó en la cola. Quien
+            // reenvía está esperando una respuesta honesta, así que aquí se manda ya.
+            Notification::sendNow($this, new VerifyEmailCapuchino);
 
             return true;
         } catch (\Throwable $e) {
@@ -56,7 +60,26 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification(): void
     {
-        defer(fn () => $this->trySendEmailVerification());
+        // Medido: el registro en sí son ~270 ms y el SMTP ~2 s. defer() saca el correo de
+        // la respuesta, pero sigue ocupando este worker de PHP, y como Inertia pide
+        // /dashboard justo después, esa petición se forma detrás. De ahí la espera.
+        //
+        // La salida de verdad es que lo mande OTRO proceso. Se activa poniendo
+        // MAIL_QUEUE_CONNECTION=database en el .env y corriendo `php artisan queue:work`.
+        //
+        // Es una conexión propia y NO el QUEUE_CONNECTION global a propósito: moviendo el
+        // global, GenerateStudyPlanJob y UpdateUserAiContextJob también se encolarían, y
+        // sin un worker vivo un alumno acabaría el placement sin plan de estudio. Así,
+        // mientras no se configure, todo sigue exactamente como hoy.
+        $conexion = config('mail.queue_connection');
+
+        if (! $conexion) {
+            defer(fn () => $this->trySendEmailVerification());
+
+            return;
+        }
+
+        $this->notify((new VerifyEmailCapuchino)->onConnection($conexion));
     }
 
     /**
