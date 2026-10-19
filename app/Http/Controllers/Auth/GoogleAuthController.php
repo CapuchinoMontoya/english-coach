@@ -27,8 +27,17 @@ class GoogleAuthController extends Controller
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user) {
-                // Existing email account — link Google ID and log in directly
-                $user->update(['google_id' => $googleUser->getId()]);
+                // Cuenta previa con ese correo: enlazamos el Google ID y entramos.
+                //
+                // Y la damos por verificada: Google ya comprobó que ese correo es suyo,
+                // que es exactamente lo que nuestra verificación intenta averiguar. Antes
+                // solo se enlazaba el ID, así que quien se había registrado por formulario
+                // sin verificar entraba con Google y seguía topándose con la pantalla de
+                // "confirma tu correo", teniendo que reenviarse el correo a sí mismo.
+                $user->update([
+                    'google_id'         => $googleUser->getId(),
+                    'email_verified_at' => $user->email_verified_at ?? now(),
+                ]);
             } else {
                 // Brand-new user — require invitation code before creating account
                 session([

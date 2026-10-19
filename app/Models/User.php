@@ -19,15 +19,33 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Envía el correo de verificación con el diseño de marca Capuchino.
+     *
+     * Devuelve si SALIÓ de verdad. No lanza: un fallo de SMTP no debe tumbar el
+     * registro. Pero antes se tragaba la excepción en silencio y quien reenviaba veía
+     * "te lo mandamos" aunque no se hubiera mandado nada, así que ahora el resultado
+     * se reporta y quien llama decide qué decirle al usuario.
      */
-    public function sendEmailVerificationNotification(): void
+    public function trySendEmailVerification(): bool
     {
         try {
             $this->notify(new VerifyEmailCapuchino);
+
+            return true;
         } catch (\Throwable $e) {
-            // No romper el registro por un fallo de SMTP: el usuario puede reenviar el correo
-            Log::error('No se pudo enviar verificación a ' . $this->email . ': ' . $e->getMessage());
+            Log::error('No se pudo enviar la verificación de correo.', [
+                'email'     => $this->email,
+                'excepcion' => $e::class,
+                'mensaje'   => $e->getMessage(),
+            ]);
+
+            return false;
         }
+    }
+
+    /** Contrato de MustVerifyEmail; el resultado se consulta con trySendEmailVerification(). */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->trySendEmailVerification();
     }
 
     /**
@@ -38,11 +56,17 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
+        // Lo fija el servidor cuando Google ya comprobó el correo, nunca el formulario.
+        // Faltaba aquí, así que User::create([... 'email_verified_at' => now()]) se
+        // descartaba en silencio y el alta por Google acababa SIN verificar, mandando al
+        // usuario a la pantalla de "confirma tu correo" sin razón. Es seguro: ningún
+        // controlador asigna desde $request->all(), todos usan listas explícitas.
+        'email_verified_at',
         'password',
         'google_id',
         'role',
         'homework_enabled',
-        'avatar', 
+        'avatar',
         'email_notifications',
     ];
 
