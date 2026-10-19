@@ -45,7 +45,11 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            // Sin timeout, un SMTP que no responde deja el proceso de PHP esperando
+            // indefinidamente. En producción eso se vio como la pantalla de registro
+            // congelada "un buen rato" y el correo que nunca salía. 15 s es de sobra
+            // para Gmail (tarda 2-3 s) y corta en seco cuando algo va mal.
+            'timeout' => env('MAIL_TIMEOUT', 15),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 

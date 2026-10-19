@@ -4,6 +4,8 @@ import { FormEventHandler, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/Alert';
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { AUTH_STRINGS, useLocale } from '@/lib/auth-i18n';
 import { AuthShell } from './_auth-shell';
 
 interface VerificationState {
@@ -29,6 +31,9 @@ export default function VerifyEmail({
     verificationState?: VerificationState;
 }) {
     const { post, processing } = useForm({});
+    const [locale, setLocale] = useLocale();
+    const strings = AUTH_STRINGS[locale];
+    const t = strings.verify;
 
     const state: VerificationState = verificationState ?? {
         wait: 0,
@@ -59,52 +64,39 @@ export default function VerifyEmail({
         post(route('verification.send'));
     };
 
-    const label = blocked
-        ? 'Too many attempts'
-        : waiting
-          ? `Resend in ${formatWait(wait)}`
-          : 'Resend verification email';
+    const label = blocked ? t.tooMany : waiting ? t.resendIn(formatWait(wait)) : t.resend;
 
     return (
         <>
-            <Head title="Verify email" />
+            <Head title={t.headTitle} />
             <AuthShell
-                eyebrow="Almost there"
-                heading={<>Check your <em style={{ color: 'var(--accent)' }}>inbox</em>.</>}
-                sub="We sent a verification link to your email address. Click it to activate your account and start learning."
-                quote="Good things come to those who verify their email."
-                word={{ word: 'verify', pron: '/ˈver.ɪ.faɪ/', pos: 'verb', defn: 'To prove that something is true or correct, or to make certain it is right.', level: 'B2' }}
+                eyebrow={t.eyebrow}
+                heading={<>{t.titlePre}<em style={{ color: 'var(--accent)' }}>{t.titleEm}</em>{t.titlePost}</>}
+                sub={t.sub}
+                quote={t.quote}
+                word={{ word: 'verify', pron: '/ˈver.ɪ.faɪ/', pos: 'verb', defn: t.wordDefn, level: 'B2' }}
             >
                 {status === 'verification-link-sent' && (
-                    <Alert tone="success" className="mb-5">
-                        A new verification link has been sent to your email address.
-                    </Alert>
+                    <Alert tone="success" className="mb-5">{t.sentAlert}</Alert>
                 )}
 
                 {status === 'verification-link-failed' && (
-                    <Alert tone="danger" className="mb-5">
-                        We couldn't send the email right now. This attempt didn't count —
-                        please try again in a moment.
-                    </Alert>
+                    <Alert tone="danger" className="mb-5">{t.failedAlert}</Alert>
                 )}
 
                 {status === 'verification-link-throttled' && (
-                    <Alert tone="warning" className="mb-5">
-                        Please wait a moment before requesting another email.
-                    </Alert>
+                    <Alert tone="warning" className="mb-5">{t.throttledAlert}</Alert>
                 )}
 
                 {blocked && (
                     <Alert tone="danger" className="mb-5">
-                        You've used all {state.max_attempts} attempts. You can request another
-                        email in {formatWait(wait)}. If it still doesn't arrive, check your spam
-                        folder or contact us and we'll verify your account manually.
+                        {t.blockedAlert(state.max_attempts, formatWait(wait))}
                     </Alert>
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s-4)', alignItems: 'center', textAlign: 'center' }}>
-                    <p style={{ fontSize: 'var(--fs-14)', color: 'var(--ink-muted)', lineHeight: 1.6, maxWidth: '34ch' }}>
-                        Didn't get the email? Check your spam folder, or click below to resend it.
+                    <p style={{ fontSize: 'var(--fs-14)', color: 'var(--ink-muted)', lineHeight: 1.6, maxWidth: '36ch' }}>
+                        {t.didntGet}
                     </p>
 
                     <form onSubmit={submit}>
@@ -121,8 +113,8 @@ export default function VerifyEmail({
 
                     {!blocked && (
                         <p style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)' }}>
-                            {state.attempts_left} of {state.max_attempts} attempts left
-                            {waiting && ' · one email per minute'}
+                            {t.attemptsLeft(state.attempts_left, state.max_attempts)}
+                            {waiting && ` · ${t.onePerMinute}`}
                         </p>
                     )}
 
@@ -132,8 +124,12 @@ export default function VerifyEmail({
                         as="button"
                         style={{ fontSize: 'var(--fs-13)', color: 'var(--ink-subtle)', marginTop: 'var(--s-3)' }}
                     >
-                        Log out and use a different account
+                        {t.logoutOther}
                     </Link>
+
+                    <div style={{ marginTop: 'var(--s-4)' }}>
+                        <LanguageToggle locale={locale} onChange={setLocale} label={strings.languageLabel} />
+                    </div>
                 </div>
             </AuthShell>
         </>

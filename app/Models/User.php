@@ -42,10 +42,21 @@ class User extends Authenticatable implements MustVerifyEmail
         }
     }
 
-    /** Contrato de MustVerifyEmail; el resultado se consulta con trySendEmailVerification(). */
+    /**
+     * Contrato de MustVerifyEmail. Lo usa el listener del evento Registered, o sea el
+     * registro, y ahí el correo sale DESPUÉS de responder.
+     *
+     * Hablar con SMTP dentro de la petición dejaba la pantalla de registro congelada
+     * varios segundos (en producción, con Gmail lento, bastante más), y si la conexión
+     * se agotaba el correo no salía nunca: parecía que solo funcionaba el botón de
+     * reenviar. Diferirlo devuelve la pantalla al instante y el envío ocurre igual.
+     *
+     * El reenvío NO pasa por aquí: llama a trySendEmailVerification() directo porque
+     * necesita saber en el momento si salió, para decírselo al usuario.
+     */
     public function sendEmailVerificationNotification(): void
     {
-        $this->trySendEmailVerification();
+        defer(fn () => $this->trySendEmailVerification());
     }
 
     /**

@@ -93,6 +93,30 @@ export interface AuthStrings {
     newToCapuchino: string
     brewFirst: string
     languageLabel: string
+    verify: VerifyStrings
+}
+
+/** Pantalla de "confirma tu correo": es la primera que ve un recien registrado. */
+export interface VerifyStrings {
+    headTitle: string
+    eyebrow: string
+    titlePre: string
+    titleEm: string
+    titlePost: string
+    sub: string
+    quote: string
+    wordDefn: string
+    sentAlert: string
+    failedAlert: string
+    throttledAlert: string
+    blockedAlert: (max: number, wait: string) => string
+    didntGet: string
+    resend: string
+    resendIn: (wait: string) => string
+    tooMany: string
+    attemptsLeft: (left: number, max: number) => string
+    onePerMinute: string
+    logoutOther: string
 }
 
 export const AUTH_STRINGS: Record<Locale, AuthStrings> = {
@@ -130,6 +154,27 @@ export const AUTH_STRINGS: Record<Locale, AuthStrings> = {
         newToCapuchino:  'New to Capuchino?',
         brewFirst:       'Brew your first cup →',
         languageLabel:   'Language',
+        verify: {
+            headTitle:      'Verify email',
+            eyebrow:        'Almost there',
+            titlePre:       'Check your ',
+            titleEm:        'inbox',
+            titlePost:      '.',
+            sub:            'We sent a verification link to your email address. Click it to activate your account and start learning.',
+            quote:          'Good things come to those who verify their email.',
+            wordDefn:       'To prove that something is true or correct, or to make certain it is right.',
+            sentAlert:      'A new verification link has been sent to your email address.',
+            failedAlert:    "We couldn't send the email right now. This attempt didn't count — please try again in a moment.",
+            throttledAlert: 'Please wait a moment before requesting another email.',
+            blockedAlert:   (max, wait) => `You've used all ${max} attempts. You can request another email in ${wait}. If it still doesn't arrive, check your spam folder or contact us and we'll verify your account manually.`,
+            didntGet:       "Didn't get the email? Check your spam folder, or click below to resend it.",
+            resend:         'Resend verification email',
+            resendIn:       (wait) => `Resend in ${wait}`,
+            tooMany:        'Too many attempts',
+            attemptsLeft:   (left, max) => `${left} of ${max} attempts left`,
+            onePerMinute:   'one email per minute',
+            logoutOther:    'Log out and use a different account',
+        },
     },
     es: {
         headTitle:       'Iniciar sesión',
@@ -165,5 +210,26 @@ export const AUTH_STRINGS: Record<Locale, AuthStrings> = {
         newToCapuchino:  '¿Nuevo en Capuchino?',
         brewFirst:       'Prepara tu primera taza →',
         languageLabel:   'Idioma',
+        verify: {
+            headTitle:      'Confirma tu correo',
+            eyebrow:        'Ya casi',
+            titlePre:       'Revisa tu ',
+            titleEm:        'bandeja',
+            titlePost:      '.',
+            sub:            'Te mandamos un enlace de confirmación a tu correo. Ábrelo para activar tu cuenta y empezar a aprender.',
+            quote:          'Lo bueno llega a quien confirma su correo.',
+            wordDefn:       'Comprobar que algo es cierto o correcto, o asegurarse de que está bien.',
+            sentAlert:      'Te enviamos un enlace nuevo a tu correo.',
+            failedAlert:    'No pudimos enviar el correo en este momento. Este intento no se contó; vuelve a probar en un rato.',
+            throttledAlert: 'Espera un momento antes de pedir otro correo.',
+            blockedAlert:   (max, wait) => `Usaste tus ${max} intentos. Podrás pedir otro correo en ${wait}. Si sigue sin llegar, revisa tu carpeta de spam o escríbenos y verificamos tu cuenta a mano.`,
+            didntGet:       '¿No te llegó? Revisa tu carpeta de spam, o pulsa aquí abajo para reenviarlo.',
+            resend:         'Reenviar el correo',
+            resendIn:       (wait) => `Reenviar en ${wait}`,
+            tooMany:        'Demasiados intentos',
+            attemptsLeft:   (left, max) => `Te quedan ${left} de ${max} intentos`,
+            onePerMinute:   'un correo por minuto',
+            logoutOther:    'Cerrar sesión y usar otra cuenta',
+        },
     },
 }
